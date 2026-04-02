@@ -876,6 +876,7 @@
   <a href="#examples">Inspiration &amp; Examples</a>
   <a href="#calendar">Content Calendar</a>
   <a href="#execution">Execution Playbook</a>
+  <a href="#filmday-tools">Film Day Tools</a>
 </div>
 
 <div class="container">
@@ -7415,6 +7416,106 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     </div>
   </div>
 
+  <!-- FILM DAY TOOLS -->
+  <div class="section-header" id="filmday-tools" style="margin-top:80px;">
+    <h2>Film Day Tools</h2>
+    <p>Quick-access tools built into this page to keep filming days fast and focused</p>
+  </div>
+
+  <!-- PROGRESS DASHBOARD -->
+  <div id="progressDashboard" style="background:#111; padding:40px; margin-bottom:24px;">
+    <h3 style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:3px; font-weight:400; margin-bottom:24px;">Progress Dashboard</h3>
+    <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:16px; margin-bottom:24px;">
+      <div style="text-align:center;">
+        <div id="stat-done" style="font-size:2.2rem; font-weight:300; color:var(--papaya);">0</div>
+        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.4); font-weight:400;">Days Done</div>
+      </div>
+      <div style="text-align:center;">
+        <div id="stat-remaining" style="font-size:2.2rem; font-weight:300; color:var(--white);">30</div>
+        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.4); font-weight:400;">Remaining</div>
+      </div>
+      <div style="text-align:center;">
+        <div id="stat-posts-done" style="font-size:2.2rem; font-weight:300; color:var(--papaya);">0</div>
+        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.4); font-weight:400;">Posts Done</div>
+      </div>
+      <div style="text-align:center;">
+        <div id="stat-posts-total" style="font-size:2.2rem; font-weight:300; color:var(--white);">90</div>
+        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.4); font-weight:400;">Total Posts</div>
+      </div>
+      <div style="text-align:center;">
+        <div id="stat-pct" style="font-size:2.2rem; font-weight:300; color:var(--papaya);">0%</div>
+        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.4); font-weight:400;">Complete</div>
+      </div>
+    </div>
+    <div style="background:var(--boxer-black); height:8px; width:100%; position:relative;">
+      <div id="stat-bar" style="background:var(--papaya); height:100%; width:0%; transition:width 0.5s;"></div>
+    </div>
+  </div>
+
+  <!-- SHOT LIST GENERATOR -->
+  <div style="background:#111; padding:40px; margin-bottom:24px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px;">
+      <h3 style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:3px; font-weight:400;">Film Day Shot List</h3>
+      <div style="display:flex; gap:8px;">
+        <button id="shotlist-3" onclick="generateShotList(3)" style="background:var(--papaya); color:var(--boxer-black); border:none; padding:8px 16px; font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; cursor:pointer;">Next 3 Days</button>
+        <button id="shotlist-5" onclick="generateShotList(5)" style="background:transparent; color:var(--papaya); border:1px solid var(--papaya); padding:8px 16px; font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; cursor:pointer;">Next 5 Days</button>
+        <button id="shotlist-7" onclick="generateShotList(7)" style="background:transparent; color:var(--papaya); border:1px solid var(--papaya); padding:8px 16px; font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; cursor:pointer;">Full Week</button>
+        <button onclick="printShotList()" style="background:transparent; color:rgba(255,255,255,0.4); border:1px solid rgba(255,255,255,0.2); padding:8px 16px; font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; cursor:pointer;">Print</button>
+      </div>
+    </div>
+    <p style="font-size:0.82rem; color:rgba(255,255,255,0.5); font-weight:300; margin-bottom:20px;">
+      Click a button to generate a quick-scan shot list of upcoming unfilmed content. Shows only what you need to know on set &mdash; title, format, platform, hook options, and key filming notes. Skip days already ticked off above.
+    </p>
+    <div id="shotListOutput" style="font-size:0.82rem; color:rgba(255,255,255,0.5);">
+      <div style="text-align:center; padding:40px; color:rgba(255,255,255,0.2); font-size:0.8rem; font-weight:300;">Click a button above to generate your shot list</div>
+    </div>
+  </div>
+
+  <!-- WHAT ELSE WE CAN BUILD -->
+  <div style="background:#111; padding:40px; margin-bottom:48px;">
+    <h3 style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:3px; font-weight:400; margin-bottom:24px;">More Tools We Can Add to This Page</h3>
+    <p style="font-size:0.85rem; color:rgba(255,255,255,0.6); font-weight:300; margin-bottom:20px;">
+      This site is a living tool, not a static document. Here&rsquo;s what else can be built in to help Chontel and Allexis stay on track:
+    </p>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+      <div style="border-left:2px solid var(--papaya); padding-left:20px; margin-bottom:16px;">
+        <h4 style="color:var(--white); font-weight:400; font-size:0.8rem; margin-bottom:8px;">Caption Copy Button</h4>
+        <p style="font-size:0.78rem; color:rgba(255,255,255,0.45); font-weight:300; line-height:1.7;">One-tap copy on every draft caption and hashtag set. Allexis pastes straight into the scheduling app &mdash; no retyping, no missed hashtags.</p>
+      </div>
+      <div style="border-left:2px solid var(--papaya); padding-left:20px; margin-bottom:16px;">
+        <h4 style="color:var(--white); font-weight:400; font-size:0.8rem; margin-bottom:8px;">Teleprompter Mode</h4>
+        <p style="font-size:0.78rem; color:rgba(255,255,255,0.45); font-weight:300; line-height:1.7;">Tap a script and it goes full-screen with large scrolling text. Prop the phone behind the camera &mdash; Chontel reads naturally without memorising. Adjustable scroll speed.</p>
+      </div>
+      <div style="border-left:2px solid var(--papaya); padding-left:20px; margin-bottom:16px;">
+        <h4 style="color:var(--white); font-weight:400; font-size:0.8rem; margin-bottom:8px;">Trending Audio Tracker</h4>
+        <p style="font-size:0.78rem; color:rgba(255,255,255,0.45); font-weight:300; line-height:1.7;">An embedded section that pulls trending TikTok sounds weekly via API or manual update. Allexis tags which sounds suit which upcoming posts &mdash; no more last-minute audio hunting.</p>
+      </div>
+      <div style="border-left:2px solid var(--papaya); padding-left:20px; margin-bottom:16px;">
+        <h4 style="color:var(--white); font-weight:400; font-size:0.8rem; margin-bottom:8px;">Google Drive Integration</h4>
+        <p style="font-size:0.78rem; color:rgba(255,255,255,0.45); font-weight:300; line-height:1.7;">Link each post to its Google Drive clip. Allexis drags footage into the day &mdash; the page shows which days have raw, edited, or approved footage. Visual pipeline right on the calendar.</p>
+      </div>
+      <div style="border-left:2px solid var(--papaya); padding-left:20px; margin-bottom:16px;">
+        <h4 style="color:var(--white); font-weight:400; font-size:0.8rem; margin-bottom:8px;">Daily Notification Bot</h4>
+        <p style="font-size:0.78rem; color:rgba(255,255,255,0.45); font-weight:300; line-height:1.7;">A WhatsApp or SMS reminder each morning with today&rsquo;s 3 posts summarised: titles, platforms, and posting times. Plus an evening nudge if any posts aren&rsquo;t ticked off yet.</p>
+      </div>
+      <div style="border-left:2px solid var(--papaya); padding-left:20px; margin-bottom:16px;">
+        <h4 style="color:var(--white); font-weight:400; font-size:0.8rem; margin-bottom:8px;">Batch Filming Checklist Generator</h4>
+        <p style="font-size:0.78rem; color:rgba(255,255,255,0.45); font-weight:300; line-height:1.7;">Auto-generate a printable checklist grouped by filming location and outfit change. Sorts content so all gym shots are together, all kitchen shots are together, all car/talking-head shots are together &mdash; minimise setup changes.</p>
+      </div>
+      <div style="border-left:2px solid var(--papaya); padding-left:20px; margin-bottom:16px;">
+        <h4 style="color:var(--white); font-weight:400; font-size:0.8rem; margin-bottom:8px;">Content Performance Tracker</h4>
+        <p style="font-size:0.78rem; color:rgba(255,255,255,0.45); font-weight:300; line-height:1.7;">After posting, Allexis logs views/likes/saves for each post. The page shows which content pillars and formats perform best &mdash; so Week 3 and 4 can double down on what&rsquo;s working.</p>
+      </div>
+      <div style="border-left:2px solid var(--papaya); padding-left:20px; margin-bottom:16px;">
+        <h4 style="color:var(--white); font-weight:400; font-size:0.8rem; margin-bottom:8px;">Outfit &amp; Location Planner</h4>
+        <p style="font-size:0.78rem; color:rgba(255,255,255,0.45); font-weight:300; line-height:1.7;">Tag each post with outfit and location. On film day, the page groups shoots: &ldquo;Black set &mdash; gym floor: 4 clips&rdquo;, &ldquo;Casual &mdash; kitchen: 2 clips&rdquo;, &ldquo;Activewear &mdash; outdoor: 1 clip&rdquo;. Film all same-outfit content back-to-back.</p>
+      </div>
+    </div>
+    <div style="margin-top:16px; background:rgba(255,143,113,0.1); padding:16px 20px; font-size:0.82rem; color:rgba(255,255,255,0.7); font-weight:300;">
+      <strong style="color:var(--papaya); font-weight:500;">WANT ANY OF THESE?</strong> Tell Sam &mdash; most of these can be added to this page in a single session. The shot list and progress dashboard above are already live. The teleprompter and caption copy button are quick wins.
+    </div>
+  </div>
+
   <!-- FOOTER -->
   <div class="footer">
     <p style="color:var(--papaya); letter-spacing:0.3em; margin-bottom:12px;">N F</p>
@@ -7593,7 +7694,179 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
       }
     });
   }
+  // ── Progress Dashboard ──
+  function updateDashboard() {
+    var days = document.querySelectorAll('.cal-day');
+    var totalDays = days.length;
+    var doneDays = 0;
+    var totalPosts = 0;
+    var donePosts = 0;
+    days.forEach(function(day, i) {
+      var dayId = 'day-' + (i + 1);
+      if (state[dayId]) doneDays++;
+      var posts = day.querySelectorAll('.cal-post');
+      totalPosts += posts.length;
+      posts.forEach(function(post, pi) {
+        if (state[dayId + '-post-' + pi]) donePosts++;
+      });
+    });
+    var pct = totalPosts > 0 ? Math.round((donePosts / totalPosts) * 100) : 0;
+    var el = function(id) { return document.getElementById(id); };
+    if (el('stat-done')) el('stat-done').textContent = doneDays;
+    if (el('stat-remaining')) el('stat-remaining').textContent = totalDays - doneDays;
+    if (el('stat-posts-done')) el('stat-posts-done').textContent = donePosts;
+    if (el('stat-posts-total')) el('stat-posts-total').textContent = totalPosts;
+    if (el('stat-pct')) el('stat-pct').textContent = pct + '%';
+    if (el('stat-bar')) el('stat-bar').style.width = pct + '%';
+  }
+  updateDashboard();
+
+  // Watch for state changes to update dashboard
+  var origSave = saveState;
+  saveState = function(s) {
+    origSave(s);
+    updateDashboard();
+  };
+
 })();
+
+// ── Shot List Generator (global scope) ──
+function generateShotList(numDays) {
+  var STORAGE_KEY = 'neuform-calendar-state';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) {}
+
+  var days = document.querySelectorAll('.cal-day');
+  var output = document.getElementById('shotListOutput');
+  if (!output) return;
+
+  // Collect unchecked days
+  var unchecked = [];
+  days.forEach(function(day, i) {
+    var dayId = 'day-' + (i + 1);
+    if (!state[dayId]) {
+      unchecked.push({ el: day, index: i, dayId: dayId });
+    }
+  });
+
+  if (unchecked.length === 0) {
+    output.innerHTML = '<div style="text-align:center; padding:40px; color:var(--papaya);">All 30 days are done! Nothing left to film.</div>';
+    return;
+  }
+
+  var toShow = unchecked.slice(0, numDays);
+  var html = '';
+
+  toShow.forEach(function(dayObj) {
+    var day = dayObj.el;
+    var dateEl = day.querySelector('.cal-date');
+    var dayNameEl = day.querySelector('.cal-dayname');
+    var dateTxt = dateEl ? dateEl.textContent : 'Day ' + (dayObj.index + 1);
+    var dayNameTxt = dayNameEl ? dayNameEl.textContent : '';
+
+    html += '<div style="border-left:2px solid var(--papaya); padding-left:20px; margin-bottom:32px;">';
+    html += '<div style="display:flex; align-items:baseline; gap:12px; margin-bottom:16px;">';
+    html += '<span style="color:var(--papaya); font-size:1rem; font-weight:500;">' + dateTxt + '</span>';
+    html += '<span style="color:rgba(255,255,255,0.4); font-size:0.8rem; font-weight:300;">' + dayNameTxt + '</span>';
+    html += '</div>';
+
+    // Get all posts for this day (from the original DOM, before JS wraps them)
+    var posts = day.querySelectorAll('.cal-post');
+    var clipNum = 0;
+
+    posts.forEach(function(post, pi) {
+      var postId = dayObj.dayId + '-post-' + pi;
+      var isDone = state[postId];
+      clipNum++;
+
+      var platEl = post.querySelector('.plat');
+      var fmtEl = post.querySelector('.fmt');
+      var badgeEl = post.querySelector('.badge');
+      var titleEl = post.querySelector('h4');
+      var hooks = post.querySelectorAll('.hook-option');
+
+      var platform = platEl ? platEl.textContent : '';
+      var format = fmtEl ? fmtEl.textContent : '';
+      var category = badgeEl ? badgeEl.textContent : '';
+      var title = titleEl ? titleEl.textContent : '';
+
+      var opacity = isDone ? 'opacity:0.25;' : '';
+      var strike = isDone ? 'text-decoration:line-through; text-decoration-color:rgba(255,255,255,0.3);' : '';
+      var doneTag = isDone ? ' <span style="color:rgba(255,255,255,0.3); font-size:0.65rem; text-transform:uppercase; letter-spacing:1px;">DONE</span>' : '';
+
+      html += '<div style="background:rgba(255,255,255,0.03); padding:16px; margin-bottom:8px; ' + opacity + '">';
+
+      // Header row
+      html += '<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">';
+      html += '<span style="color:var(--papaya); font-size:0.65rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; background:rgba(255,143,113,0.15); padding:2px 8px;">' + clipNum + '</span>';
+      html += '<span style="font-size:0.7rem; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:1px;">' + platform + '</span>';
+      html += '<span style="font-size:0.7rem; color:rgba(255,255,255,0.3);">&bull;</span>';
+      html += '<span style="font-size:0.7rem; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:1px;">' + format + '</span>';
+      if (category) {
+        html += '<span style="font-size:0.7rem; color:rgba(255,255,255,0.3);">&bull;</span>';
+        html += '<span style="font-size:0.7rem; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:1px;">' + category + '</span>';
+      }
+      html += doneTag;
+      html += '</div>';
+
+      // Title
+      html += '<div style="color:var(--white); font-weight:400; font-size:0.85rem; margin-bottom:8px; ' + strike + '">' + title + '</div>';
+
+      // Hooks (if any and not done)
+      if (hooks.length > 0 && !isDone) {
+        html += '<div style="margin-top:8px;">';
+        hooks.forEach(function(hook) {
+          var hookText = hook.textContent.replace(/^Hook \([^)]+\):\s*/, '').replace(/^"/, '').replace(/"$/, '');
+          var hookLabel = hook.querySelector('strong');
+          var label = hookLabel ? hookLabel.textContent : '';
+          html += '<div style="font-size:0.75rem; color:rgba(255,255,255,0.4); font-weight:300; line-height:1.8; padding-left:12px; border-left:1px solid rgba(255,143,113,0.2);">';
+          html += '<span style="color:var(--papaya); font-size:0.65rem; text-transform:uppercase; letter-spacing:1px;">' + label + '</span> ';
+          html += hookText;
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
+      html += '</div>';
+    });
+
+    html += '</div>';
+  });
+
+  // Summary header
+  var totalClips = 0;
+  toShow.forEach(function(d) { totalClips += d.el.querySelectorAll('.cal-post').length; });
+  var summaryHtml = '<div style="background:rgba(255,143,113,0.08); padding:16px 20px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:center;">';
+  summaryHtml += '<span style="color:var(--papaya); font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:2px;">Shot List: ' + toShow.length + ' days &bull; ' + totalClips + ' clips</span>';
+  summaryHtml += '<span style="color:rgba(255,255,255,0.3); font-size:0.72rem;">Showing next unchecked days</span>';
+  summaryHtml += '</div>';
+
+  output.innerHTML = summaryHtml + html;
+}
+
+function printShotList() {
+  var output = document.getElementById('shotListOutput');
+  if (!output || output.querySelector('[style*="text-align:center"]')) {
+    generateShotList(5);
+  }
+  var printWin = window.open('', '_blank');
+  printWin.document.write('<html><head><title>Film Day Shot List</title>');
+  printWin.document.write('<style>body{font-family:Inter,-apple-system,sans-serif;background:#fff;color:#111;padding:40px;font-size:14px;line-height:1.6;}');
+  printWin.document.write('div{break-inside:avoid;}');
+  printWin.document.write('</style></head><body>');
+  printWin.document.write('<h1 style="font-size:18px;font-weight:400;letter-spacing:3px;text-transform:uppercase;border-bottom:2px solid #FF8F71;padding-bottom:12px;color:#FF8F71;">Neuform Film Day Shot List</h1>');
+  var content = output.innerHTML;
+  // Convert dark-theme colors to print-friendly
+  content = content.replace(/var\(--papaya\)/g, '#FF8F71');
+  content = content.replace(/var\(--white\)/g, '#111');
+  content = content.replace(/var\(--boxer-black\)/g, '#fff');
+  content = content.replace(/rgba\(255,255,255,0\.\d+\)/g, '#555');
+  content = content.replace(/rgba\(255,143,113,0\.\d+\)/g, 'rgba(255,143,113,0.1)');
+  printWin.document.write(content);
+  printWin.document.write('</body></html>');
+  printWin.document.close();
+  printWin.print();
+}
 </script>
 </body>
 </html>

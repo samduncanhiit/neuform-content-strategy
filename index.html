@@ -867,10 +867,17 @@
 
   /* COLLAPSIBLE DAYS */
   .cal-day {
-    margin-bottom: 16px;
-    border-left: 2px solid var(--papaya);
-    padding-left: 32px;
+    margin-bottom: 24px;
+    border: 2px solid var(--barbell-grey);
+    border-left: 4px solid var(--papaya);
+    padding: 0 24px 0 28px;
     transition: opacity 0.3s;
+    background: rgba(255,255,255,0.01);
+  }
+  .cal-day.open {
+    border-color: var(--barbell-grey);
+    border-left-color: var(--papaya);
+    background: rgba(255,255,255,0.02);
   }
   .cal-day-header {
     display: flex;
@@ -1005,7 +1012,7 @@
     .hooks-grid { grid-template-columns: 1fr; }
     .ref-grid { grid-template-columns: 1fr; }
     /* Calendar mobile */
-    .cal-day { padding-left: 16px; margin-bottom: 8px; }
+    .cal-day { padding: 0 12px 0 14px; margin-bottom: 12px; }
     .cal-day-header { padding: 12px 0; }
     .cal-day-header .cal-date { font-size: 1.1rem; }
     .cal-post { padding: 16px; margin-bottom: 8px; }

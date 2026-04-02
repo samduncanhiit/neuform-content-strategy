@@ -837,6 +837,38 @@
     .cal-nav a.today { color: var(--papaya); font-weight: 500; }
     .cal-nav a.nav-done { color: rgba(255,255,255,0.2); text-decoration: line-through; }
     .footer { padding-bottom: 80px; } /* space for fixed nav */
+    /* Force all inline grids to stack on mobile */
+    .container div[style*="grid-template-columns:1fr 1fr;"],
+    .container div[style*="grid-template-columns: 1fr 1fr;"],
+    .container div[style*="grid-template-columns:1fr 1fr 1fr"],
+    .container div[style*="grid-template-columns: 1fr 1fr 1fr"] {
+      grid-template-columns: 1fr !important;
+    }
+    .container div[style*="grid-template-columns:repeat(5"],
+    .container div[style*="grid-template-columns: repeat(5"] {
+      grid-template-columns: repeat(3, 1fr) !important;
+    }
+    .container div[style*="grid-template-columns:repeat(7"],
+    .container div[style*="grid-template-columns: repeat(7"] {
+      grid-template-columns: repeat(4, 1fr) !important;
+    }
+    .container div[style*="grid-template-columns:repeat(4,"],
+    .container div[style*="grid-template-columns: repeat(4,"] {
+      grid-template-columns: 1fr 1fr !important;
+    }
+    /* Shot list buttons wrap on mobile */
+    .container div[style*="display:flex"][style*="justify-content:space-between"] {
+      flex-direction: column !important;
+      gap: 12px !important;
+    }
+    .container div[style*="display:flex"][style*="gap:8px"] {
+      flex-wrap: wrap !important;
+    }
+    /* Progress dashboard */
+    #progressDashboard div[style*="grid-template-columns"] {
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 12px !important;
+    }
   }
 </style>
 </head>

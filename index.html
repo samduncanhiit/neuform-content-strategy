@@ -626,6 +626,91 @@
     border-color: #ff6b6b;
     color: #ff6b6b;
   }
+  /* UPLOAD UI */
+  .upload-zone {
+    margin: 16px 0;
+    padding: 16px 20px;
+    background: rgba(255,255,255,0.02);
+    border: 1px dashed rgba(255,255,255,0.1);
+    transition: all 0.2s;
+  }
+  .upload-zone.drag-over {
+    border-color: var(--papaya);
+    background: rgba(255,143,113,0.06);
+  }
+  .upload-zone .upload-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.3);
+    display: block;
+    margin-bottom: 12px;
+    font-weight: 400;
+  }
+  .upload-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .upload-btn {
+    background: rgba(255,143,113,0.1);
+    border: 1px solid rgba(255,143,113,0.25);
+    color: var(--papaya);
+    font-size: 0.6rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+  .upload-btn:hover {
+    background: var(--papaya);
+    color: var(--boxer-black);
+  }
+  .upload-btn.uploading {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .upload-btn.uploaded {
+    background: #64D2B4;
+    border-color: #64D2B4;
+    color: var(--boxer-black);
+  }
+  .upload-progress {
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    margin-top: 8px;
+    display: none;
+  }
+  .upload-progress-bar {
+    height: 100%;
+    background: var(--papaya);
+    width: 0%;
+    transition: width 0.3s;
+  }
+  .upload-file-list {
+    margin-top: 8px;
+  }
+  .upload-file-item {
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.4);
+    font-weight: 300;
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .upload-file-item .upload-tick {
+    color: #64D2B4;
+    font-size: 0.65rem;
+  }
+  .upload-file-item .upload-fail {
+    color: #ff6b6b;
+    font-size: 0.65rem;
+  }
   .cal-options {
     margin: 16px 0;
   }
@@ -8054,6 +8139,184 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
       });
     });
   });
+
+  // ── Upload Buttons ──
+  var UPLOAD_API = 'https://hiit-automations-production.up.railway.app/api/drive/upload';
+  var FOLDERS_API = 'https://hiit-automations-production.up.railway.app/api/drive/folders';
+  var folderMap = null;
+
+  function initUploads() {
+    // Fetch folder map from API
+    fetch(FOLDERS_API)
+      .then(function(r) { return r.json(); })
+      .then(function(map) {
+        folderMap = map;
+        buildUploadButtons();
+      })
+      .catch(function(err) {
+        console.log('Could not load folder map:', err);
+      });
+  }
+
+  function buildUploadButtons() {
+    if (!folderMap) return;
+
+    document.querySelectorAll('.cal-day').forEach(function(day, dayIdx) {
+      var dateEl = day.querySelector('.cal-date');
+      if (!dateEl) return;
+      var dayNum = dateEl.textContent.replace('April ', '').trim();
+      var dayNameEl = day.querySelector('.cal-dayname');
+      var dayName = dayNameEl ? dayNameEl.textContent.trim().substring(0, 3) : '';
+      var dayKey = 'April-' + dayNum.padStart(2, '0') + '-' + dayName;
+
+      var dayFolder = folderMap[dayKey];
+      if (!dayFolder) return;
+
+      // Find the cal-day-body (created by the toggle JS)
+      var body = day.querySelector('.cal-day-body');
+      if (!body) return;
+
+      var posts = body.querySelectorAll('.cal-post');
+      posts.forEach(function(post, pi) {
+        var postNum = String(pi + 1).padStart(2, '0');
+        var postFolder = dayFolder.posts[postNum];
+        if (!postFolder) return;
+
+        // Create upload zone
+        var zone = document.createElement('div');
+        zone.className = 'upload-zone';
+        zone.innerHTML =
+          '<span class="upload-label">Upload Footage</span>' +
+          '<div class="upload-btns">' +
+            '<label class="upload-btn" data-stage="Raw">' +
+              'Upload Raw <input type="file" multiple accept="video/*,image/*" style="display:none">' +
+            '</label>' +
+            '<label class="upload-btn" data-stage="Edited">' +
+              'Upload Edited <input type="file" multiple accept="video/*,image/*" style="display:none">' +
+            '</label>' +
+            '<label class="upload-btn" data-stage="Approved">' +
+              'Upload Approved <input type="file" multiple accept="video/*,image/*" style="display:none">' +
+            '</label>' +
+          '</div>' +
+          '<div class="upload-progress"><div class="upload-progress-bar"></div></div>' +
+          '<div class="upload-file-list"></div>';
+
+        // Drag and drop (defaults to Raw)
+        zone.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          zone.classList.add('drag-over');
+        });
+        zone.addEventListener('dragleave', function() {
+          zone.classList.remove('drag-over');
+        });
+        zone.addEventListener('drop', function(e) {
+          e.preventDefault();
+          zone.classList.remove('drag-over');
+          var files = e.dataTransfer.files;
+          if (files.length > 0) {
+            uploadFiles(files, postFolder['Raw'], zone, 'Raw');
+          }
+        });
+
+        // Button click handlers
+        zone.querySelectorAll('.upload-btn').forEach(function(btn) {
+          var input = btn.querySelector('input');
+          var stage = btn.dataset.stage;
+          input.addEventListener('change', function() {
+            if (input.files.length > 0) {
+              uploadFiles(input.files, postFolder[stage], zone, stage);
+            }
+          });
+        });
+
+        // Insert after cal-cta or at end of post
+        var cta = post.querySelector('.cal-cta');
+        if (cta) {
+          cta.after(zone);
+        } else {
+          post.appendChild(zone);
+        }
+      });
+    });
+  }
+
+  function uploadFiles(files, folderId, zone, stage) {
+    if (!folderId) {
+      alert('Folder not found for this stage. Try refreshing the page.');
+      return;
+    }
+
+    var progressBar = zone.querySelector('.upload-progress');
+    var progressFill = zone.querySelector('.upload-progress-bar');
+    var fileList = zone.querySelector('.upload-file-list');
+    var btn = zone.querySelector('[data-stage="' + stage + '"]');
+
+    progressBar.style.display = 'block';
+    if (btn) btn.classList.add('uploading');
+
+    var total = files.length;
+    var completed = 0;
+    var uploadKey = '';
+    try { uploadKey = localStorage.getItem('neuform-upload-key') || ''; } catch(e) {}
+
+    Array.from(files).forEach(function(file, idx) {
+      var formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder_id', folderId);
+      if (uploadKey) formData.append('key', uploadKey);
+
+      var item = document.createElement('div');
+      item.className = 'upload-file-item';
+      item.textContent = file.name + ' — uploading...';
+      fileList.appendChild(item);
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', UPLOAD_API);
+
+      xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+          var filePct = (e.loaded / e.total) * 100;
+          var overallPct = ((completed * 100) + filePct) / total;
+          progressFill.style.width = overallPct + '%';
+        }
+      });
+
+      xhr.addEventListener('load', function() {
+        completed++;
+        if (xhr.status === 200) {
+          item.innerHTML = '<span class="upload-tick">✓</span> ' + file.name;
+        } else {
+          var errMsg = 'failed';
+          try { errMsg = JSON.parse(xhr.responseText).error || 'failed'; } catch(e) {}
+          item.innerHTML = '<span class="upload-fail">✗</span> ' + file.name + ' — ' + errMsg;
+        }
+        if (completed === total) {
+          progressFill.style.width = '100%';
+          if (btn) {
+            btn.classList.remove('uploading');
+            btn.classList.add('uploaded');
+            var label = btn.childNodes[0];
+            if (label) label.textContent = stage + ' ✓ (' + total + ') ';
+          }
+          setTimeout(function() { progressBar.style.display = 'none'; }, 2000);
+        }
+      });
+
+      xhr.addEventListener('error', function() {
+        completed++;
+        item.innerHTML = '<span class="upload-fail">✗</span> ' + file.name + ' — network error';
+        if (completed === total) {
+          if (btn) btn.classList.remove('uploading');
+          setTimeout(function() { progressBar.style.display = 'none'; }, 2000);
+        }
+      });
+
+      xhr.send(formData);
+    });
+  }
+
+  // Init uploads after a short delay (let toggle JS finish)
+  setTimeout(initUploads, 500);
 
   // ── Progress Dashboard ──
   function updateDashboard() {

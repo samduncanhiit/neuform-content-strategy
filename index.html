@@ -645,6 +645,29 @@
     font-weight: 300;
   }
   .cal-option strong { color: var(--white); font-weight: 400; }
+  .cal-options .cal-option {
+    cursor: pointer;
+    transition: all 0.15s;
+    padding: 10px 12px;
+    margin: 0 -12px;
+  }
+  .cal-options .cal-option:hover {
+    background: rgba(255,143,113,0.06);
+    color: var(--white);
+  }
+  .cal-options .cal-option.active-option {
+    background: rgba(255,143,113,0.1);
+    border-left: 2px solid var(--papaya);
+    color: var(--white);
+  }
+  .cal-options .cal-option .swap-hint {
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--papaya);
+    float: right;
+    margin-top: 2px;
+  }
   .cal-execution {
     background: rgba(255,143,113,0.05);
     padding: 16px 20px;
@@ -7931,6 +7954,105 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     caption.appendChild(resetBtn);
     caption.appendChild(editBtn);
     caption.appendChild(copyBtn);
+  });
+
+  // ── Option Swap (click to switch title) ──
+  var SWAPS_KEY = 'neuform-option-swaps';
+  var savedSwaps = {};
+  try { savedSwaps = JSON.parse(localStorage.getItem(SWAPS_KEY)) || {}; } catch(e) {}
+
+  document.querySelectorAll('.cal-post').forEach(function(post, postIdx) {
+    var titleEl = post.querySelector('h4');
+    var optionsContainer = post.querySelector('.cal-options');
+    if (!titleEl || !optionsContainer) return;
+
+    var options = optionsContainer.querySelectorAll('.cal-option');
+    if (options.length === 0) return;
+
+    var postId = 'swap-' + postIdx;
+    var originalTitle = titleEl.textContent;
+
+    // Change label
+    var label = optionsContainer.querySelector('.option-label');
+    if (label) label.textContent = 'Tap to Switch Concept';
+
+    // Create Option A from the original title
+    var optionA = document.createElement('div');
+    optionA.className = 'cal-option active-option';
+    optionA.innerHTML = '<strong>Option A (current):</strong> ' + originalTitle;
+    var hintA = document.createElement('span');
+    hintA.className = 'swap-hint';
+    hintA.textContent = 'active';
+    optionA.appendChild(hintA);
+    optionsContainer.insertBefore(optionA, options[0]);
+
+    // Add hints to other options
+    options.forEach(function(opt) {
+      var hint = document.createElement('span');
+      hint.className = 'swap-hint';
+      hint.textContent = 'tap to use';
+      opt.appendChild(hint);
+    });
+
+    // Get all options including A
+    var allOptions = optionsContainer.querySelectorAll('.cal-option');
+
+    // Extract the concept text from an option (everything after "Option X:")
+    function getConceptText(opt) {
+      var text = opt.textContent;
+      // Remove the swap hint text
+      text = text.replace(/active$|tap to use$/i, '').trim();
+      // Extract after "Option X:" or "Option X (current):"
+      var match = text.match(/Option [A-Z](?:\s*\([^)]*\))?:\s*(.*)/);
+      if (match) {
+        // Strip trailing description after em dash
+        var concept = match[1].split(' — ')[0].split(' \u2014 ')[0].trim();
+        // Remove quotes if present
+        concept = concept.replace(/^[""]|[""]$/g, '');
+        return concept;
+      }
+      return text;
+    }
+
+    // Restore saved swap
+    if (savedSwaps[postId] !== undefined) {
+      var savedIdx = savedSwaps[postId];
+      if (savedIdx >= 0 && savedIdx < allOptions.length) {
+        var concept = getConceptText(allOptions[savedIdx]);
+        titleEl.textContent = concept;
+        allOptions.forEach(function(o) {
+          o.classList.remove('active-option');
+          var h = o.querySelector('.swap-hint');
+          if (h) h.textContent = 'tap to use';
+        });
+        allOptions[savedIdx].classList.add('active-option');
+        var activeHint = allOptions[savedIdx].querySelector('.swap-hint');
+        if (activeHint) activeHint.textContent = 'active';
+      }
+    }
+
+    // Click handlers
+    allOptions.forEach(function(opt, optIdx) {
+      opt.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var concept = getConceptText(opt);
+        titleEl.textContent = concept;
+
+        // Update active states
+        allOptions.forEach(function(o) {
+          o.classList.remove('active-option');
+          var h = o.querySelector('.swap-hint');
+          if (h) h.textContent = 'tap to use';
+        });
+        opt.classList.add('active-option');
+        var hint = opt.querySelector('.swap-hint');
+        if (hint) hint.textContent = 'active';
+
+        // Save
+        savedSwaps[postId] = optIdx;
+        localStorage.setItem(SWAPS_KEY, JSON.stringify(savedSwaps));
+      });
+    });
   });
 
   // ── Progress Dashboard ──

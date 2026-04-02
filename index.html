@@ -644,6 +644,11 @@
     font-style: italic;
   }
 
+  /* DRIVE PIPELINE */
+  .drive-pipeline { display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; margin-bottom:24px; }
+  .drive-step { background:rgba(255,143,113,0.08); padding:20px; text-align:center; }
+  .drive-arrow { text-align:center; display:flex; align-items:center; justify-content:center; color:var(--papaya); font-size:1.2rem; }
+
   /* FOOTER */
   .footer {
     text-align: center;
@@ -837,38 +842,32 @@
     .cal-nav a.today { color: var(--papaya); font-weight: 500; }
     .cal-nav a.nav-done { color: rgba(255,255,255,0.2); text-decoration: line-through; }
     .footer { padding-bottom: 80px; } /* space for fixed nav */
-    /* Force all inline grids to stack on mobile */
-    .container div[style*="grid-template-columns:1fr 1fr;"],
-    .container div[style*="grid-template-columns: 1fr 1fr;"],
-    .container div[style*="grid-template-columns:1fr 1fr 1fr"],
-    .container div[style*="grid-template-columns: 1fr 1fr 1fr"] {
-      grid-template-columns: 1fr !important;
+    /* Horizontal scroll carousels on mobile */
+    .drive-pipeline {
+      display:flex !important; overflow-x:auto !important; scroll-snap-type:x mandatory !important;
+      -webkit-overflow-scrolling:touch; gap:12px !important; padding-bottom:8px !important;
     }
-    .container div[style*="grid-template-columns:repeat(5"],
-    .container div[style*="grid-template-columns: repeat(5"] {
-      grid-template-columns: repeat(3, 1fr) !important;
+    .drive-arrow { display:none !important; }
+    .drive-step { min-width:70vw !important; scroll-snap-align:start !important; flex-shrink:0 !important; }
+    .week-grid {
+      display:flex !important; overflow-x:auto !important; scroll-snap-type:x mandatory !important;
+      -webkit-overflow-scrolling:touch; gap:8px !important; padding-bottom:8px !important;
     }
-    .container div[style*="grid-template-columns:repeat(7"],
-    .container div[style*="grid-template-columns: repeat(7"] {
-      grid-template-columns: repeat(4, 1fr) !important;
+    .week-grid > div { min-width:40vw !important; scroll-snap-align:start !important; flex-shrink:0 !important; }
+    .repurpose-grid {
+      display:flex !important; overflow-x:auto !important; scroll-snap-type:x mandatory !important;
+      -webkit-overflow-scrolling:touch; gap:12px !important; padding-bottom:8px !important;
     }
-    .container div[style*="grid-template-columns:repeat(4,"],
-    .container div[style*="grid-template-columns: repeat(4,"] {
-      grid-template-columns: 1fr 1fr !important;
-    }
-    /* Shot list buttons wrap on mobile */
-    .container div[style*="display:flex"][style*="justify-content:space-between"] {
-      flex-direction: column !important;
-      gap: 12px !important;
-    }
-    .container div[style*="display:flex"][style*="gap:8px"] {
-      flex-wrap: wrap !important;
-    }
+    .repurpose-grid > div { min-width:65vw !important; scroll-snap-align:start !important; flex-shrink:0 !important; }
+    /* Toolkit: single col */
+    .toolkit-grid { grid-template-columns: 1fr !important; }
+    /* Shot list header + buttons */
+    .shotlist-header { flex-direction:column !important; gap:12px !important; }
+    .shotlist-buttons { flex-wrap:wrap !important; }
     /* Progress dashboard */
-    #progressDashboard div[style*="grid-template-columns"] {
-      grid-template-columns: repeat(3, 1fr) !important;
-      gap: 12px !important;
-    }
+    .dashboard-stats { grid-template-columns: repeat(3, 1fr) !important; gap:12px !important; }
+    /* All 2-col inline grids in execution/tools sections */
+    .exec-grid { grid-template-columns: 1fr !important; }
   }
 </style>
 </head>
@@ -7110,7 +7109,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
   <!-- TEAM ROLES -->
   <div style="background:#111; padding:40px; margin-bottom:24px;">
     <h3 style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:3px; font-weight:400; margin-bottom:24px;">Team Roles &amp; Responsibilities</h3>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:40px;">
+    <div class="exec-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:40px;">
       <div>
         <h4 style="color:var(--white); font-weight:500; font-size:0.9rem; margin-bottom:12px;">Chontel <span style="color:rgba(255,255,255,0.4); font-weight:300;">&mdash; Talent</span></h4>
         <ul style="list-style:none; font-size:0.82rem; color:rgba(255,255,255,0.6); font-weight:300; line-height:2;">
@@ -7141,7 +7140,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     <p style="font-size:0.85rem; color:rgba(255,255,255,0.6); font-weight:300; margin-bottom:24px;">
       Don&rsquo;t film daily. Instead, block <strong style="color:var(--white);">2 filming sessions per week</strong> (90&ndash;120 min each) to capture 8&ndash;12 clips per session. That covers 3&ndash;4 days of content in one go.
     </p>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+    <div class="exec-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
       <div style="background:rgba(255,143,113,0.06); padding:24px; border-left:2px solid var(--papaya);">
         <h4 style="color:var(--papaya); font-weight:400; font-size:0.75rem; text-transform:uppercase; letter-spacing:2px; margin-bottom:12px;">Session 1 &mdash; Monday Morning</h4>
         <ul style="list-style:none; font-size:0.82rem; color:rgba(255,255,255,0.6); font-weight:300; line-height:2;">
@@ -7174,20 +7173,20 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     <p style="font-size:0.85rem; color:rgba(255,255,255,0.6); font-weight:300; margin-bottom:20px;">
       Every clip moves through a pipeline. This prevents "where&rsquo;s that footage?" chaos and lets both of you see progress at a glance.
     </p>
-    <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; margin-bottom:24px;">
-      <div style="background:rgba(255,143,113,0.08); padding:20px; text-align:center;">
+    <div class="drive-pipeline">
+      <div class="drive-step">
         <div style="font-size:1.4rem; margin-bottom:8px;">📱</div>
         <div style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; font-weight:400; margin-bottom:6px;">01 &mdash; Raw</div>
         <div style="font-size:0.75rem; color:rgba(255,255,255,0.5); font-weight:300;">Straight off camera. Unedited. Named by date + type.</div>
       </div>
-      <div style="text-align:center; display:flex; align-items:center; justify-content:center; color:var(--papaya); font-size:1.2rem;">&rarr;</div>
-      <div style="background:rgba(255,143,113,0.08); padding:20px; text-align:center;">
+      <div class="drive-arrow">&rarr;</div>
+      <div class="drive-step">
         <div style="font-size:1.4rem; margin-bottom:8px;">✂️</div>
         <div style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; font-weight:400; margin-bottom:6px;">02 &mdash; Edited</div>
         <div style="font-size:0.75rem; color:rgba(255,255,255,0.5); font-weight:300;">Cut, captioned, audio added. Ready for review.</div>
       </div>
-      <div style="text-align:center; display:flex; align-items:center; justify-content:center; color:var(--papaya); font-size:1.2rem;">&rarr;</div>
-      <div style="background:rgba(255,143,113,0.08); padding:20px; text-align:center;">
+      <div class="drive-arrow">&rarr;</div>
+      <div class="drive-step">
         <div style="font-size:1.4rem; margin-bottom:8px;">✅</div>
         <div style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; font-weight:400; margin-bottom:6px;">03 &mdash; Approved</div>
         <div style="font-size:0.75rem; color:rgba(255,255,255,0.5); font-weight:300;">Chontel reviewed. Scheduled or ready to post.</div>
@@ -7203,7 +7202,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
   <!-- WEEKLY WORKFLOW -->
   <div style="background:#111; padding:40px; margin-bottom:24px;">
     <h3 style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:3px; font-weight:400; margin-bottom:24px;">Weekly Workflow &mdash; The Rhythm</h3>
-    <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:8px;">
+    <div class="week-grid" style="display:grid; grid-template-columns:repeat(7,1fr); gap:8px;">
       <div style="background:rgba(255,143,113,0.12); padding:16px 12px; text-align:center;">
         <div style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; font-weight:500; margin-bottom:8px;">Mon</div>
         <div style="font-size:0.72rem; color:rgba(255,255,255,0.6); font-weight:300; line-height:1.6;">
@@ -7255,7 +7254,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
   <!-- EDITING & SCHEDULING -->
   <div style="background:#111; padding:40px; margin-bottom:24px;">
     <h3 style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:3px; font-weight:400; margin-bottom:24px;">Editing &amp; Scheduling Toolkit</h3>
-    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px;">
+    <div class="toolkit-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px;">
       <div>
         <h4 style="color:var(--white); font-weight:400; font-size:0.8rem; margin-bottom:12px;">Editing Apps</h4>
         <ul style="list-style:none; font-size:0.82rem; color:rgba(255,255,255,0.55); font-weight:300; line-height:2;">
@@ -7292,7 +7291,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     <p style="font-size:0.85rem; color:rgba(255,255,255,0.6); font-weight:300; margin-bottom:20px;">
       Before filming anything new, Allexis should spend <strong style="color:var(--white);">2&ndash;3 hours</strong> going through the existing Google Drive content. A huge amount of April&rsquo;s calendar can likely be covered by footage that already exists.
     </p>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+    <div class="exec-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
       <div style="border-left:2px solid var(--papaya); padding-left:20px;">
         <h4 style="color:var(--white); font-weight:400; font-size:0.8rem; margin-bottom:8px;">Audit Process</h4>
         <ol style="font-size:0.82rem; color:rgba(255,255,255,0.55); font-weight:300; line-height:2.2; padding-left:16px;">
@@ -7326,7 +7325,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     <p style="font-size:0.85rem; color:rgba(255,255,255,0.6); font-weight:300; margin-bottom:20px;">
       Every piece of filmed content should produce <strong style="color:var(--white);">2&ndash;3 outputs</strong>. Film once &rarr; edit multiple ways.
     </p>
-    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px;">
+    <div class="repurpose-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px;">
       <div style="background:rgba(255,143,113,0.06); padding:20px; text-align:center;">
         <div style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; font-weight:400; margin-bottom:8px;">1 Workout Clip</div>
         <div style="font-size:0.75rem; color:rgba(255,255,255,0.5); font-weight:300; line-height:1.6;">
@@ -7365,7 +7364,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
   <!-- POSTING SCHEDULE -->
   <div style="background:#111; padding:40px; margin-bottom:24px;">
     <h3 style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:3px; font-weight:400; margin-bottom:24px;">Optimal Posting Times (AEST)</h3>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+    <div class="exec-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
       <div style="border-left:2px solid var(--papaya); padding-left:20px;">
         <h4 style="color:var(--white); font-weight:400; font-size:0.8rem; margin-bottom:12px;">Instagram</h4>
         <ul style="list-style:none; font-size:0.82rem; color:rgba(255,255,255,0.55); font-weight:300; line-height:2;">
@@ -7391,7 +7390,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
   <!-- EFFICIENCY HACKS -->
   <div style="background:#111; padding:40px; margin-bottom:24px;">
     <h3 style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:3px; font-weight:400; margin-bottom:24px;">Efficiency Hacks for a 2-Person Team</h3>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+    <div class="exec-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
       <div>
         <ul style="list-style:none; font-size:0.82rem; color:rgba(255,255,255,0.55); font-weight:300; line-height:2.4;">
           <li><span style="color:var(--papaya);">01</span> &ensp; <strong style="color:var(--white); font-weight:400;">Caption templates in CapCut</strong> &mdash; Save Neuform&rsquo;s brand font/colour as a preset. Apply to every video in 2 taps.</li>
@@ -7419,7 +7418,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     <p style="font-size:0.85rem; color:rgba(255,255,255,0.6); font-weight:300; margin-bottom:20px;">
       Do these things <strong style="color:var(--white);">today and tomorrow</strong> to hit the ground running. Everything else flows from here.
     </p>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:32px;">
+    <div class="exec-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:32px;">
       <div>
         <h4 style="color:var(--white); font-weight:400; font-size:0.8rem; margin-bottom:12px;">Allexis &mdash; Today</h4>
         <ul style="list-style:none; font-size:0.82rem; color:rgba(255,255,255,0.55); font-weight:300; line-height:2.4;">
@@ -7457,7 +7456,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
   <!-- PROGRESS DASHBOARD -->
   <div id="progressDashboard" style="background:#111; padding:40px; margin-bottom:24px;">
     <h3 style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:3px; font-weight:400; margin-bottom:24px;">Progress Dashboard</h3>
-    <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:16px; margin-bottom:24px;">
+    <div class="dashboard-stats" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:16px; margin-bottom:24px;">
       <div style="text-align:center;">
         <div id="stat-done" style="font-size:2.2rem; font-weight:300; color:var(--papaya);">0</div>
         <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.4); font-weight:400;">Days Done</div>
@@ -7486,9 +7485,9 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
 
   <!-- SHOT LIST GENERATOR -->
   <div style="background:#111; padding:40px; margin-bottom:24px;">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px;">
+    <div class="shotlist-header" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px;">
       <h3 style="color:var(--papaya); font-size:0.7rem; text-transform:uppercase; letter-spacing:3px; font-weight:400;">Film Day Shot List</h3>
-      <div style="display:flex; gap:8px;">
+      <div class="shotlist-buttons" style="display:flex; gap:8px;">
         <button id="shotlist-3" onclick="generateShotList(3)" style="background:var(--papaya); color:var(--boxer-black); border:none; padding:8px 16px; font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; cursor:pointer;">Next 3 Days</button>
         <button id="shotlist-5" onclick="generateShotList(5)" style="background:transparent; color:var(--papaya); border:1px solid var(--papaya); padding:8px 16px; font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; cursor:pointer;">Next 5 Days</button>
         <button id="shotlist-7" onclick="generateShotList(7)" style="background:transparent; color:var(--papaya); border:1px solid var(--papaya); padding:8px 16px; font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; cursor:pointer;">Full Week</button>
@@ -7509,7 +7508,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     <p style="font-size:0.85rem; color:rgba(255,255,255,0.6); font-weight:300; margin-bottom:20px;">
       This site is a living tool, not a static document. Here&rsquo;s what else can be built in to help Chontel and Allexis stay on track:
     </p>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+    <div class="exec-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
       <div style="border-left:2px solid var(--papaya); padding-left:20px; margin-bottom:16px;">
         <h4 style="color:var(--white); font-weight:400; font-size:0.8rem; margin-bottom:8px;">Caption Copy Button</h4>
         <p style="font-size:0.78rem; color:rgba(255,255,255,0.45); font-weight:300; line-height:1.7;">One-tap copy on every draft caption and hashtag set. Allexis pastes straight into the scheduling app &mdash; no retyping, no missed hashtags.</p>

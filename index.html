@@ -8177,9 +8177,20 @@ function generateShotList(numDays) {
       if (hooks.length > 0 && !isDone) {
         html += '<div style="margin-top:8px;">';
         hooks.forEach(function(hook) {
-          var hookText = hook.textContent.replace(/^Hook \([^)]+\):\s*/, '').replace(/^"/, '').replace(/"$/, '');
           var hookLabel = hook.querySelector('strong');
           var label = hookLabel ? hookLabel.textContent : '';
+          // Get text after the strong tag
+          var hookText = '';
+          var pastStrong = false;
+          hook.childNodes.forEach(function(node) {
+            if (node === hookLabel) { pastStrong = true; return; }
+            if (pastStrong) hookText += node.textContent;
+          });
+          hookText = hookText.trim().replace(/^[""\s]+|[""\s]+$/g, '');
+          if (!hookText) {
+            // Fallback: strip label from full text
+            hookText = hook.textContent.replace(label, '').trim().replace(/^[""\s]+|[""\s]+$/g, '');
+          }
           html += '<div style="font-size:0.75rem; color:rgba(255,255,255,0.4); font-weight:300; line-height:1.8; padding-left:12px; border-left:1px solid rgba(255,143,113,0.2);">';
           html += '<span style="color:var(--papaya); font-size:0.65rem; text-transform:uppercase; letter-spacing:1px;">' + label + '</span> ';
           html += hookText;

@@ -8217,24 +8217,91 @@ function generateShotList(numDays) {
 }
 
 function printShotList() {
-  var output = document.getElementById('shotListOutput');
-  if (!output || output.querySelector('[style*="text-align:center"]')) {
-    generateShotList(5);
-  }
+  var STORAGE_KEY = 'neuform-calendar-state';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) {}
+
+  var days = document.querySelectorAll('.cal-day');
+  var unchecked = [];
+  days.forEach(function(day, i) {
+    var dayId = 'day-' + (i + 1);
+    if (!state[dayId]) unchecked.push({ el: day, index: i, dayId: dayId });
+  });
+
+  // Use the number from whichever shot list button was last pressed, default 5
+  var numDays = parseInt(document.querySelector('.shotlist-buttons .active-sl-btn')?.dataset?.days || '5');
+  var toShow = unchecked.slice(0, numDays);
+
+  var html = '';
+  var totalClips = 0;
+
+  toShow.forEach(function(dayObj) {
+    var day = dayObj.el;
+    var dateEl = day.querySelector('.cal-date');
+    var dayNameEl = day.querySelector('.cal-dayname');
+    var dateTxt = dateEl ? dateEl.textContent : '';
+    var dayNameTxt = dayNameEl ? dayNameEl.textContent : '';
+
+    html += '<div style="margin-bottom:24px; page-break-inside:avoid;">';
+    html += '<h2 style="font-size:14px; font-weight:600; color:#FF8F71; border-bottom:2px solid #FF8F71; padding-bottom:6px; margin-bottom:12px;">' + dateTxt + ' — ' + dayNameTxt + '</h2>';
+
+    var posts = day.querySelectorAll('.cal-post');
+    posts.forEach(function(post, pi) {
+      var postId = dayObj.dayId + '-post-' + pi;
+      if (state[postId]) return; // skip done posts
+      totalClips++;
+
+      var platEl = post.querySelector('.plat');
+      var fmtEl = post.querySelector('.fmt');
+      var badgeEl = post.querySelector('.badge');
+      var titleEl = post.querySelector('h4');
+      var execEl = post.querySelector('.cal-execution');
+
+      var platform = platEl ? platEl.textContent : '';
+      var format = fmtEl ? fmtEl.textContent : '';
+      var category = badgeEl ? badgeEl.textContent : '';
+      var title = titleEl ? titleEl.textContent : '';
+
+      // Get execution notes text (strip the label)
+      var execText = '';
+      if (execEl) {
+        var execLabel = execEl.querySelector('.exec-label');
+        execText = execEl.textContent;
+        if (execLabel) execText = execText.replace(execLabel.textContent, '');
+        execText = execText.trim();
+      }
+
+      html += '<div style="margin-bottom:16px; padding-left:16px; border-left:2px solid #eee; page-break-inside:avoid;">';
+
+      // Checkbox + title line
+      html += '<div style="display:flex; align-items:flex-start; gap:8px; margin-bottom:4px;">';
+      html += '<span style="display:inline-block; width:14px; height:14px; border:1.5px solid #999; flex-shrink:0; margin-top:2px;"></span>';
+      html += '<div>';
+      html += '<strong style="font-size:13px;">' + title + '</strong>';
+      html += '<span style="font-size:11px; color:#999; margin-left:8px;">' + platform + ' · ' + format + ' · ' + category + '</span>';
+      html += '</div>';
+      html += '</div>';
+
+      // Execution notes
+      if (execText) {
+        html += '<div style="font-size:11px; color:#666; line-height:1.5; padding-left:22px; margin-top:4px;">' + execText + '</div>';
+      }
+
+      html += '</div>';
+    });
+
+    html += '</div>';
+  });
+
   var printWin = window.open('', '_blank');
-  printWin.document.write('<html><head><title>Film Day Shot List</title>');
-  printWin.document.write('<style>body{font-family:Inter,-apple-system,sans-serif;background:#fff;color:#111;padding:40px;font-size:14px;line-height:1.6;}');
-  printWin.document.write('div{break-inside:avoid;}');
-  printWin.document.write('</style></head><body>');
-  printWin.document.write('<h1 style="font-size:18px;font-weight:400;letter-spacing:3px;text-transform:uppercase;border-bottom:2px solid #FF8F71;padding-bottom:12px;color:#FF8F71;">Neuform Film Day Shot List</h1>');
-  var content = output.innerHTML;
-  // Convert dark-theme colors to print-friendly
-  content = content.replace(/var\(--papaya\)/g, '#FF8F71');
-  content = content.replace(/var\(--white\)/g, '#111');
-  content = content.replace(/var\(--boxer-black\)/g, '#fff');
-  content = content.replace(/rgba\(255,255,255,0\.\d+\)/g, '#555');
-  content = content.replace(/rgba\(255,143,113,0\.\d+\)/g, 'rgba(255,143,113,0.1)');
-  printWin.document.write(content);
+  printWin.document.write('<html><head><title>Film Day Checklist</title>');
+  printWin.document.write('<style>body{font-family:Inter,-apple-system,sans-serif;background:#fff;color:#111;padding:32px;font-size:13px;line-height:1.5;} @media print{body{padding:16px;}}</style>');
+  printWin.document.write('</head><body>');
+  printWin.document.write('<div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid #FF8F71; padding-bottom:8px; margin-bottom:24px;">');
+  printWin.document.write('<h1 style="font-size:16px; font-weight:400; letter-spacing:3px; text-transform:uppercase; color:#FF8F71; margin:0;">Film Day Checklist</h1>');
+  printWin.document.write('<span style="font-size:11px; color:#999;">' + toShow.length + ' days · ' + totalClips + ' clips to film</span>');
+  printWin.document.write('</div>');
+  printWin.document.write(html);
   printWin.document.write('</body></html>');
   printWin.document.close();
   printWin.print();

@@ -632,9 +632,12 @@
     padding: 16px 20px 20px;
     background: rgba(255,255,255,0.02);
     border: 1px dashed rgba(255,255,255,0.1);
-    border-bottom: 5px solid rgba(255,143,113,0.6);
-    margin-bottom: 28px;
     transition: all 0.2s;
+  }
+  .post-divider {
+    height: 5px;
+    background: rgba(255,143,113,0.6);
+    margin: 24px 0;
   }
   .upload-zone.drag-over {
     border-color: var(--papaya);
@@ -8346,6 +8349,20 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
 
   // Init uploads after a short delay (let toggle JS finish)
   setTimeout(initUploads, 500);
+
+  // Add dividers between posts (after toggle JS wraps them in cal-day-body)
+  setTimeout(function() {
+    document.querySelectorAll('.cal-day-body').forEach(function(body) {
+      var posts = body.querySelectorAll('.cal-post');
+      posts.forEach(function(post, i) {
+        if (i < posts.length - 1) {
+          var divider = document.createElement('div');
+          divider.className = 'post-divider';
+          post.after(divider);
+        }
+      });
+    });
+  }, 100);
 
   // ── Progress Dashboard ──
   function updateDashboard() {

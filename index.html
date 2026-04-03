@@ -7870,18 +7870,13 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     header.insertBefore(toggle, header.firstChild);
 
     // Add checkbox with "posted" label
-    const checkWrap = document.createElement('div');
-    checkWrap.className = 'cal-filmed-check';
-    checkWrap.style.cssText = 'cursor:default;';
     const checkbox = document.createElement('div');
     checkbox.className = 'cal-checkbox';
+    header.appendChild(checkbox);
     const checkLabel = document.createElement('span');
-    checkLabel.className = 'filmed-label';
+    checkLabel.style.cssText = 'font-size:0.55rem;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,0.25);font-weight:400;';
     checkLabel.textContent = 'posted';
-    checkLabel.style.color = 'rgba(255,255,255,0.25)';
-    checkWrap.appendChild(checkbox);
-    checkWrap.appendChild(checkLabel);
-    header.appendChild(checkWrap);
+    header.appendChild(checkLabel);
 
     // Add "Filmed" checkbox
     const filmedCheck = document.createElement('div');
@@ -7928,7 +7923,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
           const postId = dayId + '-post-' + pi;
           postCheck.setAttribute('data-post-id', postId);
           const postCheckLabel = document.createElement('span');
-          postCheckLabel.style.cssText = 'font-size:0.5rem;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.2);font-weight:400;margin-right:8px;';
+          postCheckLabel.style.cssText = 'font-size:0.55rem;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,0.25);font-weight:400;margin-right:6px;';
           postCheckLabel.textContent = 'filmed';
           postHeader.insertBefore(postCheckLabel, postHeader.firstChild);
           postHeader.insertBefore(postCheck, postHeader.firstChild);

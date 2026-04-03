@@ -927,6 +927,44 @@
     font-size: 0.75rem;
     font-weight: 700;
   }
+  .cal-filmed-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cal-filmed-check .filmed-box {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--barbell-grey);
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .cal-filmed-check.checked .filmed-box {
+    border-color: #64D2B4;
+    background: #64D2B4;
+  }
+  .cal-filmed-check.checked .filmed-box::after {
+    content: '\2713';
+    color: var(--boxer-black);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .cal-filmed-check .filmed-label {
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.3);
+    font-weight: 400;
+  }
+  .cal-filmed-check.checked .filmed-label {
+    color: #64D2B4;
+  }
   .cal-day.done {
     opacity: 0.35;
   }
@@ -7836,6 +7874,32 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     checkbox.className = 'cal-checkbox';
     header.appendChild(checkbox);
 
+    // Add "Filmed" checkbox
+    const filmedCheck = document.createElement('div');
+    filmedCheck.className = 'cal-filmed-check';
+    const filmedBox = document.createElement('div');
+    filmedBox.className = 'filmed-box';
+    const filmedLabel = document.createElement('span');
+    filmedLabel.className = 'filmed-label';
+    filmedLabel.textContent = 'filmed';
+    filmedCheck.appendChild(filmedBox);
+    filmedCheck.appendChild(filmedLabel);
+    header.appendChild(filmedCheck);
+
+    // Restore filmed state
+    const filmedId = dayId + '-filmed';
+    if (state[filmedId]) {
+      filmedCheck.classList.add('checked');
+    }
+
+    // Filmed checkbox click
+    filmedCheck.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const checked = filmedCheck.classList.toggle('checked');
+      state[filmedId] = checked;
+      saveState(state);
+    });
+
     // Add progress pips
     const posts = body.querySelectorAll('.cal-post');
     if (posts.length > 0) {
@@ -7893,7 +7957,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
 
     // Toggle click (on header, excluding checkbox)
     header.addEventListener('click', function(e) {
-      if (e.target === checkbox || e.target.closest('.cal-checkbox') || e.target.closest('.cal-post-check')) return;
+      if (e.target === checkbox || e.target.closest('.cal-checkbox') || e.target.closest('.cal-post-check') || e.target.closest('.cal-filmed-check')) return;
       day.classList.toggle('open');
       state[dayId + '-open'] = day.classList.contains('open');
       saveState(state);

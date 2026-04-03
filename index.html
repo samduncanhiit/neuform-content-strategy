@@ -7869,10 +7869,19 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     toggle.textContent = '\u25B6';
     header.insertBefore(toggle, header.firstChild);
 
-    // Add checkbox
+    // Add checkbox with "posted" label
+    const checkWrap = document.createElement('div');
+    checkWrap.className = 'cal-filmed-check';
+    checkWrap.style.cssText = 'cursor:default;';
     const checkbox = document.createElement('div');
     checkbox.className = 'cal-checkbox';
-    header.appendChild(checkbox);
+    const checkLabel = document.createElement('span');
+    checkLabel.className = 'filmed-label';
+    checkLabel.textContent = 'posted';
+    checkLabel.style.color = 'rgba(255,255,255,0.25)';
+    checkWrap.appendChild(checkbox);
+    checkWrap.appendChild(checkLabel);
+    header.appendChild(checkWrap);
 
     // Add "Filmed" checkbox
     const filmedCheck = document.createElement('div');
@@ -7881,7 +7890,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     filmedBox.className = 'filmed-box';
     const filmedLabel = document.createElement('span');
     filmedLabel.className = 'filmed-label';
-    filmedLabel.textContent = 'filmed';
+    filmedLabel.textContent = 'all filmed';
     filmedCheck.appendChild(filmedBox);
     filmedCheck.appendChild(filmedLabel);
     header.appendChild(filmedCheck);
@@ -7918,6 +7927,10 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
           postCheck.className = 'cal-post-check';
           const postId = dayId + '-post-' + pi;
           postCheck.setAttribute('data-post-id', postId);
+          const postCheckLabel = document.createElement('span');
+          postCheckLabel.style.cssText = 'font-size:0.5rem;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.2);font-weight:400;margin-right:8px;';
+          postCheckLabel.textContent = 'filmed';
+          postHeader.insertBefore(postCheckLabel, postHeader.firstChild);
           postHeader.insertBefore(postCheck, postHeader.firstChild);
 
           // Restore post state
@@ -7925,6 +7938,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
             postCheck.classList.add('checked');
             post.classList.add('post-done');
             pip.classList.add('filled');
+            postCheckLabel.style.color = 'var(--papaya)';
           }
 
           // Post checkbox click
@@ -7933,6 +7947,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
             const checked = postCheck.classList.toggle('checked');
             post.classList.toggle('post-done', checked);
             pip.classList.toggle('filled', checked);
+            postCheckLabel.style.color = checked ? 'var(--papaya)' : 'rgba(255,255,255,0.2)';
             state[postId] = checked;
 
             // Check if all posts done = day done
@@ -7950,6 +7965,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     // Restore day state
     if (state[dayId]) {
       day.classList.add('done');
+      checkLabel.style.color = 'var(--papaya)';
     }
     if (state[dayId + '-open']) {
       day.classList.add('open');

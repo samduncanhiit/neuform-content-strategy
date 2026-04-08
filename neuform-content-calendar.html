@@ -7907,31 +7907,37 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     checkLabel.textContent = 'posted';
     header.appendChild(checkLabel);
 
-    // Add "Filmed" checkbox
-    const filmedCheck = document.createElement('div');
-    filmedCheck.className = 'cal-filmed-check';
-    const filmedBox = document.createElement('div');
-    filmedBox.className = 'filmed-box';
-    const filmedLabel = document.createElement('span');
-    filmedLabel.className = 'filmed-label';
-    filmedLabel.textContent = 'uploaded';
-    filmedCheck.appendChild(filmedBox);
-    filmedCheck.appendChild(filmedLabel);
-    header.appendChild(filmedCheck);
+    // Add per-post upload checkboxes (a) uploaded, b) uploaded, etc.)
+    const uploadChecksContainer = document.createElement('div');
+    uploadChecksContainer.style.cssText = 'display:flex;gap:10px;align-items:center;';
+    const postCount = day.querySelectorAll('.cal-post').length;
+    const letters = 'abcdefghijklmnopqrstuvwxyz';
+    for (let pi = 0; pi < postCount; pi++) {
+      const letter = letters[pi] || String(pi + 1);
+      const filmedCheck = document.createElement('div');
+      filmedCheck.className = 'cal-filmed-check';
+      const filmedBox = document.createElement('div');
+      filmedBox.className = 'filmed-box';
+      const filmedLabel = document.createElement('span');
+      filmedLabel.className = 'filmed-label';
+      filmedLabel.textContent = letter + ') uploaded';
+      filmedCheck.appendChild(filmedBox);
+      filmedCheck.appendChild(filmedLabel);
+      uploadChecksContainer.appendChild(filmedCheck);
 
-    // Restore filmed state
-    const filmedId = dayId + '-filmed';
-    if (state[filmedId]) {
-      filmedCheck.classList.add('checked');
+      const filmedId = dayId + '-uploaded-' + letter;
+      if (state[filmedId]) {
+        filmedCheck.classList.add('checked');
+      }
+
+      filmedCheck.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const checked = filmedCheck.classList.toggle('checked');
+        state[filmedId] = checked;
+        saveState(state);
+      });
     }
-
-    // Filmed checkbox click
-    filmedCheck.addEventListener('click', function(e) {
-      e.stopPropagation();
-      const checked = filmedCheck.classList.toggle('checked');
-      state[filmedId] = checked;
-      saveState(state);
-    });
+    header.appendChild(uploadChecksContainer);
 
     // Add progress pips
     const posts = body.querySelectorAll('.cal-post');
@@ -7944,9 +7950,13 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
         pip.setAttribute('data-post', pi);
         progress.appendChild(pip);
 
-        // Add post-level checkbox
+        // Add post-level checkbox with letter label
         const postHeader = post.querySelector('.cal-post-header');
         if (postHeader) {
+          const letterLabel = document.createElement('span');
+          const postLetter = 'abcdefghijklmnopqrstuvwxyz'[pi] || String(pi + 1);
+          letterLabel.style.cssText = 'font-size:0.85rem;font-weight:600;color:var(--papaya);margin-right:8px;text-transform:uppercase;';
+          letterLabel.textContent = postLetter + ')';
           const postCheck = document.createElement('div');
           postCheck.className = 'cal-post-check';
           const postId = dayId + '-post-' + pi;
@@ -7956,6 +7966,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
           postCheckLabel.textContent = 'filmed';
           postHeader.insertBefore(postCheckLabel, postHeader.firstChild);
           postHeader.insertBefore(postCheck, postHeader.firstChild);
+          postHeader.insertBefore(letterLabel, postHeader.firstChild);
 
           // Restore post state
           if (state[postId]) {

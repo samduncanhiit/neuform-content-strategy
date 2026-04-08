@@ -1021,7 +1021,7 @@
     font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 2px;
-    color: rgba(255,255,255,0.6);
+    color: var(--papaya);
     font-weight: 500;
   }
   .cal-filmed-check.checked .filmed-label {
@@ -8365,6 +8365,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
         var zone = document.createElement('div');
         zone.className = 'upload-zone';
         zone.innerHTML =
+          '<span class="upload-label">Upload Footage</span>' +
           '<div class="upload-btns">' +
             '<div class="upload-group"><span class="upload-tick" data-tick="Raw"></span><label class="upload-btn" data-stage="Raw">Raw <input type="file" multiple accept="video/*,image/*" style="display:none"></label></div>' +
             '<div class="upload-group"><span class="upload-tick" data-tick="Edited"></span><label class="upload-btn" data-stage="Edited">Edited <input type="file" multiple accept="video/*,image/*" style="display:none"></label></div>' +

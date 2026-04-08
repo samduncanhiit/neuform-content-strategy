@@ -882,6 +882,7 @@
     padding: 20px 24px;
     margin: 16px 0;
     line-height: 1.8;
+    position: relative;
   }
   .cal-script .script-label {
     font-size: 0.6rem;
@@ -8159,6 +8160,112 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
     caption.appendChild(resetBtn);
     caption.appendChild(editBtn);
     caption.appendChild(copyBtn);
+  });
+
+  // ── Script Edit & Copy Buttons ──
+  var SCRIPTS_KEY = 'neuform-script-edits';
+  var savedScripts = {};
+  try { savedScripts = JSON.parse(localStorage.getItem(SCRIPTS_KEY)) || {}; } catch(e) {}
+
+  document.querySelectorAll('.cal-script').forEach(function(script, idx) {
+    var scriptId = 'script-' + idx;
+    var label = script.querySelector('.script-label');
+    if (!label) return;
+
+    // Make script block position relative for buttons
+    script.style.position = 'relative';
+
+    // Wrap all content after label
+    var textWrapper = document.createElement('div');
+    textWrapper.className = 'script-text';
+    var nodes = [];
+    var pastLabel = false;
+    Array.from(script.childNodes).forEach(function(node) {
+      if (node === label) { pastLabel = true; return; }
+      if (pastLabel) nodes.push(node);
+    });
+    nodes.forEach(function(node) { textWrapper.appendChild(node); });
+    script.appendChild(textWrapper);
+
+    var originalText = textWrapper.innerHTML;
+
+    if (savedScripts[scriptId]) {
+      textWrapper.innerHTML = savedScripts[scriptId];
+      var badge = document.createElement('span');
+      badge.className = 'caption-edited-badge';
+      badge.textContent = 'edited';
+      label.appendChild(badge);
+    }
+
+    var editBtn = document.createElement('button');
+    editBtn.className = 'edit-btn';
+    editBtn.textContent = 'Edit';
+
+    var resetBtn = document.createElement('button');
+    resetBtn.className = 'reset-btn';
+    resetBtn.textContent = 'Reset';
+    if (savedScripts[scriptId]) resetBtn.style.display = 'block';
+
+    var copyBtn = document.createElement('button');
+    copyBtn.className = 'copy-btn';
+    copyBtn.textContent = 'Copy';
+
+    editBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var isEditing = textWrapper.contentEditable === 'true';
+      if (isEditing) {
+        textWrapper.contentEditable = 'false';
+        editBtn.textContent = 'Edit';
+        editBtn.classList.remove('editing');
+        var newText = textWrapper.innerHTML;
+        if (newText !== originalText) {
+          savedScripts[scriptId] = newText;
+          localStorage.setItem(SCRIPTS_KEY, JSON.stringify(savedScripts));
+          resetBtn.style.display = 'block';
+          if (!label.querySelector('.caption-edited-badge')) {
+            var badge = document.createElement('span');
+            badge.className = 'caption-edited-badge';
+            badge.textContent = 'edited';
+            label.appendChild(badge);
+          }
+        }
+      } else {
+        textWrapper.contentEditable = 'true';
+        textWrapper.focus();
+        editBtn.textContent = 'Save';
+        editBtn.classList.add('editing');
+      }
+    });
+
+    resetBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      textWrapper.innerHTML = originalText;
+      textWrapper.contentEditable = 'false';
+      editBtn.textContent = 'Edit';
+      editBtn.classList.remove('editing');
+      delete savedScripts[scriptId];
+      localStorage.setItem(SCRIPTS_KEY, JSON.stringify(savedScripts));
+      resetBtn.style.display = 'none';
+      var badge = label.querySelector('.caption-edited-badge');
+      if (badge) badge.remove();
+    });
+
+    copyBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var text = textWrapper.textContent.trim().replace(/\n{3,}/g, '\n\n');
+      navigator.clipboard.writeText(text).then(function() {
+        copyBtn.textContent = 'Copied!';
+        copyBtn.classList.add('copied');
+        setTimeout(function() {
+          copyBtn.textContent = 'Copy';
+          copyBtn.classList.remove('copied');
+        }, 2000);
+      });
+    });
+
+    script.appendChild(resetBtn);
+    script.appendChild(editBtn);
+    script.appendChild(copyBtn);
   });
 
   // ── Option Swap (click to switch title) ──

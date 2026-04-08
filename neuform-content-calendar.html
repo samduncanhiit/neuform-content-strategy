@@ -1138,33 +1138,101 @@
     .cal-option { font-size: 0.8rem; }
     .cal-cta { font-size: 0.65rem; }
     /* Mobile calendar nav */
-    .cal-nav {
+    .cal-nav { display: none !important; }
+    .cal-caption, .cal-script { padding-top: 12px; }
+    .cal-caption .edit-btn, .cal-caption .copy-btn, .cal-caption .reset-btn,
+    .cal-script .edit-btn, .cal-script .copy-btn, .cal-script .reset-btn {
+      position: static;
+      display: inline-block;
+      margin-top: 8px;
+      margin-right: 6px;
+    }
+    .hamburger-btn {
       display: flex;
+      position: fixed;
+      bottom: 24px;
+      right: 16px;
+      width: 48px;
+      height: 48px;
+      background: var(--papaya);
+      border: none;
+      border-radius: 50%;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
+    .hamburger-btn span {
+      font-size: 1.2rem;
+      color: var(--boxer-black);
+      font-weight: 700;
+      line-height: 1;
+    }
+    .day-picker-overlay {
+      display: none;
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      background: #111;
-      border-top: 1px solid var(--barbell-grey);
-      padding: 8px 12px;
-      z-index: 200;
-      gap: 4px;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
+      top: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 250;
+      align-items: flex-end;
+      justify-content: center;
     }
-    .cal-nav a {
-      color: rgba(255,255,255,0.5);
-      text-decoration: none;
+    .day-picker-overlay.open { display: flex; }
+    .day-picker-panel {
+      background: #161616;
+      border-top: 2px solid var(--papaya);
+      width: 100%;
+      max-height: 70vh;
+      overflow-y: auto;
+      padding: 20px 16px 32px;
+    }
+    .day-picker-panel .picker-title {
       font-size: 0.6rem;
-      padding: 6px 8px;
-      white-space: nowrap;
-      text-align: center;
-      min-width: 32px;
-      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--papaya);
+      margin-bottom: 16px;
+      font-weight: 500;
     }
-    .cal-nav a.today { color: var(--papaya); font-weight: 500; }
-    .cal-nav a.nav-done { color: rgba(255,255,255,0.2); text-decoration: line-through; }
-    .footer { padding-bottom: 80px; } /* space for fixed nav */
+    .day-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .day-picker-grid a {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 4px;
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 400;
+      border-radius: 4px;
+      transition: all 0.15s;
+    }
+    .day-picker-grid a .picker-dayname {
+      font-size: 0.45rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 2px;
+    }
+    .day-picker-grid a.today {
+      border: 1px solid var(--papaya);
+      color: var(--papaya);
+      font-weight: 600;
+    }
+    .day-picker-grid a.nav-done {
+      color: rgba(255,255,255,0.2);
+      text-decoration: line-through;
+    }
     /* Horizontal scroll carousels on mobile */
     .drive-pipeline {
       display:flex !important; overflow-x:auto !important; scroll-snap-type:x mandatory !important;
@@ -8020,7 +8088,6 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
       a.href = '#' + dayId;
       a.textContent = dayNum;
       if (state[dayId]) a.className = 'nav-done';
-      // Highlight today (April 2)
       if (parseInt(dayNum) === new Date().getDate()) a.classList.add('today');
       a.addEventListener('click', function(e) {
         e.preventDefault();
@@ -8032,6 +8099,53 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
       });
       nav.appendChild(a);
     });
+
+    // Build mobile hamburger + overlay
+    if (window.innerWidth <= 768 && !document.querySelector('.hamburger-btn')) {
+      var overlay = document.createElement('div');
+      overlay.className = 'day-picker-overlay';
+      overlay.innerHTML = '<div class="day-picker-panel"><div class="picker-title">Jump to Day</div><div class="day-picker-grid"></div></div>';
+      document.body.appendChild(overlay);
+
+      var grid = overlay.querySelector('.day-picker-grid');
+      var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      document.querySelectorAll('.cal-day').forEach(function(day, i) {
+        var dayId = 'day-' + (i + 1);
+        var dateEl = day.querySelector('.cal-date');
+        var dayNameEl = day.querySelector('.cal-dayname');
+        var dayNum = dateEl ? dateEl.textContent.replace('April ', '') : (i + 1);
+        var dayName = dayNameEl ? dayNameEl.textContent.trim().substring(0, 3) : '';
+        var a = document.createElement('a');
+        a.href = '#';
+        a.innerHTML = dayNum + '<span class="picker-dayname">' + dayName + '</span>';
+        if (state[dayId]) a.classList.add('nav-done');
+        if (parseInt(dayNum) === new Date().getDate()) a.classList.add('today');
+        a.addEventListener('click', function(e) {
+          e.preventDefault();
+          overlay.classList.remove('open');
+          day.setAttribute('id', dayId);
+          day.classList.add('open');
+          state[dayId + '-open'] = true;
+          saveState(state);
+          setTimeout(function() {
+            day.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        });
+        grid.appendChild(a);
+      });
+
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) overlay.classList.remove('open');
+      });
+
+      var btn = document.createElement('button');
+      btn.className = 'hamburger-btn';
+      btn.innerHTML = '<span>&#9776;</span>';
+      btn.addEventListener('click', function() {
+        overlay.classList.toggle('open');
+      });
+      document.body.appendChild(btn);
+    }
   }
   updateNav();
 

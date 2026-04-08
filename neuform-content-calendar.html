@@ -649,11 +649,15 @@
   }
   /* UPLOAD UI */
   .upload-zone {
-    margin: 16px 0 0 0;
-    padding: 16px 20px 20px;
+    margin: 0 0 12px 0;
+    padding: 10px 16px;
     background: rgba(255,255,255,0.02);
     border: 1px dashed rgba(255,255,255,0.1);
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
   }
   .post-divider {
     height: 5px;
@@ -669,15 +673,13 @@
     text-transform: uppercase;
     letter-spacing: 3px;
     color: rgba(255,255,255,0.3);
-    display: block;
-    margin-bottom: 12px;
     font-weight: 400;
+    flex-shrink: 0;
   }
   .upload-btns {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    margin-bottom: 8px;
   }
   .upload-btn {
     background: rgba(255,143,113,0.1);
@@ -8363,10 +8365,10 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
           });
         });
 
-        // Insert after cal-cta or at end of post
-        var cta = post.querySelector('.cal-cta');
-        if (cta) {
-          cta.after(zone);
+        // Insert after title (before post-body) so it's visible when collapsed
+        var titleEl = post.querySelector('h4');
+        if (titleEl) {
+          titleEl.after(zone);
         } else {
           post.appendChild(zone);
         }

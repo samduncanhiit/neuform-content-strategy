@@ -707,27 +707,37 @@
     border-color: #64D2B4;
     color: var(--boxer-black);
   }
+  .upload-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
   .upload-tick {
     display: inline-block;
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     border: 1.5px solid rgba(255,143,113,0.4);
     border-radius: 2px;
-    margin-right: 6px;
-    vertical-align: middle;
+    cursor: pointer;
     position: relative;
+    flex-shrink: 0;
+    transition: all 0.2s;
   }
-  .upload-btn.uploaded .upload-tick {
-    background: var(--boxer-black);
-    border-color: var(--boxer-black);
+  .upload-tick:hover {
+    border-color: var(--papaya);
   }
-  .upload-btn.uploaded .upload-tick::after {
+  .upload-tick.checked {
+    background: #64D2B4;
+    border-color: #64D2B4;
+  }
+  .upload-tick.checked::after {
     content: '\2713';
     position: absolute;
-    top: -2px;
-    left: 1px;
+    top: -1px;
+    left: 2px;
     font-size: 10px;
     color: var(--boxer-black);
+    font-weight: 700;
   }
   .upload-progress {
     height: 3px;
@@ -8356,15 +8366,9 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
         zone.className = 'upload-zone';
         zone.innerHTML =
           '<div class="upload-btns">' +
-            '<label class="upload-btn" data-stage="Raw">' +
-              '<span class="upload-tick"></span>Raw <input type="file" multiple accept="video/*,image/*" style="display:none">' +
-            '</label>' +
-            '<label class="upload-btn" data-stage="Edited">' +
-              '<span class="upload-tick"></span>Edited <input type="file" multiple accept="video/*,image/*" style="display:none">' +
-            '</label>' +
-            '<label class="upload-btn" data-stage="Approved">' +
-              '<span class="upload-tick"></span>Approved <input type="file" multiple accept="video/*,image/*" style="display:none">' +
-            '</label>' +
+            '<div class="upload-group"><span class="upload-tick" data-tick="Raw"></span><label class="upload-btn" data-stage="Raw">Raw <input type="file" multiple accept="video/*,image/*" style="display:none"></label></div>' +
+            '<div class="upload-group"><span class="upload-tick" data-tick="Edited"></span><label class="upload-btn" data-stage="Edited">Edited <input type="file" multiple accept="video/*,image/*" style="display:none"></label></div>' +
+            '<div class="upload-group"><span class="upload-tick" data-tick="Approved"></span><label class="upload-btn" data-stage="Approved">Approved <input type="file" multiple accept="video/*,image/*" style="display:none"></label></div>' +
           '</div>' +
           '<div class="upload-progress"><div class="upload-progress-bar"></div></div>' +
           '<div class="upload-file-list"></div>';
@@ -8394,6 +8398,21 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
             if (input.files.length > 0) {
               uploadFiles(input.files, postFolder[stage], zone, stage);
             }
+          });
+        });
+
+        // Upload tick checkboxes
+        var TICKS_KEY = 'neuform-upload-ticks';
+        var tickStates = {};
+        try { tickStates = JSON.parse(localStorage.getItem(TICKS_KEY)) || {}; } catch(e) {}
+        zone.querySelectorAll('.upload-tick').forEach(function(tick) {
+          var tickId = dayKey + '-' + postNum + '-' + tick.dataset.tick;
+          if (tickStates[tickId]) tick.classList.add('checked');
+          tick.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var checked = tick.classList.toggle('checked');
+            tickStates[tickId] = checked;
+            localStorage.setItem(TICKS_KEY, JSON.stringify(tickStates));
           });
         });
 

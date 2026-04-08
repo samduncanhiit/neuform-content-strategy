@@ -777,30 +777,37 @@
     font-weight: 400;
   }
   .cal-execution strong { color: var(--papaya) !important; }
-  .cal-examples {
-    margin-top: 16px;
+  .cal-examples { display: none; }
+
+  /* Collapsible sections */
+  .section-toggle {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  .cal-examples .ex-label {
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 3px;
-    color: #BB86FC;
-    margin-bottom: 8px;
-    font-weight: 400;
-  }
-  .cal-examples a {
+  .section-toggle .toggle-arrow {
     display: inline-block;
-    color: #BB86FC;
-    text-decoration: none;
-    font-size: 0.78rem;
-    font-weight: 400;
-    margin-right: 20px;
-    margin-bottom: 6px;
-    opacity: 0.85;
-    transition: opacity 0.2s;
+    font-size: 0.5rem;
+    color: rgba(255,255,255,0.4);
+    transition: transform 0.2s;
+    flex-shrink: 0;
   }
-  .cal-examples a:hover { opacity: 1; text-decoration: underline; }
-  .cal-examples .cal-option strong { color: #BB86FC !important; }
+  .section-toggle.open .toggle-arrow {
+    transform: rotate(90deg);
+  }
+  .cal-caption .section-content,
+  .cal-script .section-content,
+  .cal-execution .section-content {
+    display: none;
+    margin-top: 8px;
+  }
+  .cal-caption.section-open .section-content,
+  .cal-script.section-open .section-content,
+  .cal-execution.section-open .section-content {
+    display: block;
+  }
   .cal-cta {
     display: inline-block;
     margin-top: 12px;
@@ -1063,8 +1070,7 @@
     .cal-script .hook-option { padding: 10px 12px; font-size: 0.8rem; }
     .cal-script .script-body { font-size: 0.8rem; }
     .cal-execution { padding: 12px 14px; font-size: 0.78rem; }
-    .cal-examples a { font-size: 0.72rem; margin-right: 0; display: block; margin-bottom: 4px; }
-    .cal-examples .cal-option { font-size: 0.78rem; }
+    .cal-examples { display: none; }
     .cal-option { font-size: 0.8rem; }
     .cal-cta { font-size: 0.65rem; }
     /* Mobile calendar nav */
@@ -8690,6 +8696,55 @@ function printShotList() {
   printWin.document.close();
   printWin.print();
 }
+
+  // ── Collapsible Sections (Caption, Script, Execution) ──
+  var SECTIONS_KEY = 'neuform-section-states';
+  var sectionStates = {};
+  try { sectionStates = JSON.parse(localStorage.getItem(SECTIONS_KEY)) || {}; } catch(e) {}
+
+  function makeSectionCollapsible(el, idx, type) {
+    var label = el.querySelector('.caption-label, .script-label, .exec-label');
+    if (!label) return;
+
+    var sectionId = type + '-' + idx;
+
+    // Wrap everything after the label into a content div
+    var content = document.createElement('div');
+    content.className = 'section-content';
+    var nodes = [];
+    var pastLabel = false;
+    Array.from(el.children).forEach(function(node) {
+      if (node === label) { pastLabel = true; return; }
+      if (pastLabel) nodes.push(node);
+    });
+    nodes.forEach(function(node) { content.appendChild(node); });
+    el.appendChild(content);
+
+    // Make label a toggle
+    var arrow = document.createElement('span');
+    arrow.className = 'toggle-arrow';
+    arrow.textContent = '\u25B6';
+    label.classList.add('section-toggle');
+    label.insertBefore(arrow, label.firstChild);
+
+    // Restore state (default collapsed)
+    if (sectionStates[sectionId]) {
+      el.classList.add('section-open');
+      label.classList.add('open');
+    }
+
+    label.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var isOpen = el.classList.toggle('section-open');
+      label.classList.toggle('open', isOpen);
+      sectionStates[sectionId] = isOpen;
+      localStorage.setItem(SECTIONS_KEY, JSON.stringify(sectionStates));
+    });
+  }
+
+  document.querySelectorAll('.cal-caption').forEach(function(el, i) { makeSectionCollapsible(el, i, 'caption'); });
+  document.querySelectorAll('.cal-script').forEach(function(el, i) { makeSectionCollapsible(el, i, 'script'); });
+  document.querySelectorAll('.cal-execution').forEach(function(el, i) { makeSectionCollapsible(el, i, 'execution'); });
 </script>
 </body>
 </html>

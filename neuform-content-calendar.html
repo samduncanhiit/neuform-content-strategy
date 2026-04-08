@@ -491,6 +491,27 @@
     padding: 28px;
     margin-bottom: 12px;
   }
+  .cal-post .post-body {
+    display: none;
+  }
+  .cal-post.post-open .post-body {
+    display: block;
+  }
+  .cal-post h4 {
+    cursor: pointer;
+    user-select: none;
+  }
+  .cal-post h4 .post-toggle-arrow {
+    display: inline-block;
+    font-size: 0.55rem;
+    color: rgba(255,255,255,0.35);
+    margin-right: 8px;
+    transition: transform 0.2s;
+    vertical-align: middle;
+  }
+  .cal-post.post-open h4 .post-toggle-arrow {
+    transform: rotate(90deg);
+  }
   .cal-post-header {
     display: flex;
     align-items: center;
@@ -8708,12 +8729,12 @@ function printShotList() {
 
     var sectionId = type + '-' + idx;
 
-    // Wrap everything after the label into a content div
+    // Wrap everything after the label into a content div (use childNodes to capture text nodes too)
     var content = document.createElement('div');
     content.className = 'section-content';
     var nodes = [];
     var pastLabel = false;
-    Array.from(el.children).forEach(function(node) {
+    Array.from(el.childNodes).forEach(function(node) {
       if (node === label) { pastLabel = true; return; }
       if (pastLabel) nodes.push(node);
     });
@@ -8745,6 +8766,53 @@ function printShotList() {
   document.querySelectorAll('.cal-caption').forEach(function(el, i) { makeSectionCollapsible(el, i, 'caption'); });
   document.querySelectorAll('.cal-script').forEach(function(el, i) { makeSectionCollapsible(el, i, 'script'); });
   document.querySelectorAll('.cal-execution').forEach(function(el, i) { makeSectionCollapsible(el, i, 'execution'); });
+
+  // ── Collapsible Posts (each video folds down) ──
+  var POSTS_KEY = 'neuform-post-open-states';
+  var postOpenStates = {};
+  try { postOpenStates = JSON.parse(localStorage.getItem(POSTS_KEY)) || {}; } catch(e) {}
+
+  document.querySelectorAll('.cal-post').forEach(function(post, idx) {
+    var postId = 'post-fold-' + idx;
+    var titleEl = post.querySelector('h4');
+    var headerEl = post.querySelector('.cal-post-header');
+    if (!titleEl) return;
+
+    // Wrap everything after h4 into a post-body div
+    var body = document.createElement('div');
+    body.className = 'post-body';
+    var nodes = [];
+    var pastTitle = false;
+    Array.from(post.children).forEach(function(node) {
+      if (node === headerEl || node === titleEl) return;
+      if (pastTitle) nodes.push(node);
+    });
+    // Everything after the title
+    var foundTitle = false;
+    Array.from(post.children).forEach(function(node) {
+      if (node === titleEl) { foundTitle = true; return; }
+      if (foundTitle && node !== headerEl) nodes.push(node);
+    });
+    nodes.forEach(function(node) { body.appendChild(node); });
+    post.appendChild(body);
+
+    // Add toggle arrow to title
+    var arrow = document.createElement('span');
+    arrow.className = 'post-toggle-arrow';
+    arrow.textContent = '\u25B6';
+    titleEl.insertBefore(arrow, titleEl.firstChild);
+
+    // Restore state (default collapsed)
+    if (postOpenStates[postId]) {
+      post.classList.add('post-open');
+    }
+
+    titleEl.addEventListener('click', function(e) {
+      var isOpen = post.classList.toggle('post-open');
+      postOpenStates[postId] = isOpen;
+      localStorage.setItem(POSTS_KEY, JSON.stringify(postOpenStates));
+    });
+  });
 </script>
 </body>
 </html>

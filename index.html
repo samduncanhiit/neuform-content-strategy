@@ -707,6 +707,28 @@
     border-color: #64D2B4;
     color: var(--boxer-black);
   }
+  .upload-tick {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid rgba(255,143,113,0.4);
+    border-radius: 2px;
+    margin-right: 6px;
+    vertical-align: middle;
+    position: relative;
+  }
+  .upload-btn.uploaded .upload-tick {
+    background: var(--boxer-black);
+    border-color: var(--boxer-black);
+  }
+  .upload-btn.uploaded .upload-tick::after {
+    content: '\2713';
+    position: absolute;
+    top: -2px;
+    left: 1px;
+    font-size: 10px;
+    color: var(--boxer-black);
+  }
   .upload-progress {
     height: 3px;
     background: rgba(255,255,255,0.06);
@@ -7920,7 +7942,7 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
       filmedBox.className = 'filmed-box';
       const filmedLabel = document.createElement('span');
       filmedLabel.className = 'filmed-label';
-      filmedLabel.textContent = letter + ') uploaded';
+      filmedLabel.textContent = letter + ') scheduled';
       filmedCheck.appendChild(filmedBox);
       filmedCheck.appendChild(filmedLabel);
       uploadChecksContainer.appendChild(filmedCheck);
@@ -8333,16 +8355,15 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
         var zone = document.createElement('div');
         zone.className = 'upload-zone';
         zone.innerHTML =
-          '<span class="upload-label">Upload Footage</span>' +
           '<div class="upload-btns">' +
             '<label class="upload-btn" data-stage="Raw">' +
-              'Upload Raw <input type="file" multiple accept="video/*,image/*" style="display:none">' +
+              '<span class="upload-tick"></span>Raw <input type="file" multiple accept="video/*,image/*" style="display:none">' +
             '</label>' +
             '<label class="upload-btn" data-stage="Edited">' +
-              'Upload Edited <input type="file" multiple accept="video/*,image/*" style="display:none">' +
+              '<span class="upload-tick"></span>Edited <input type="file" multiple accept="video/*,image/*" style="display:none">' +
             '</label>' +
             '<label class="upload-btn" data-stage="Approved">' +
-              'Upload Approved <input type="file" multiple accept="video/*,image/*" style="display:none">' +
+              '<span class="upload-tick"></span>Approved <input type="file" multiple accept="video/*,image/*" style="display:none">' +
             '</label>' +
           '</div>' +
           '<div class="upload-progress"><div class="upload-progress-bar"></div></div>' +

@@ -1116,9 +1116,17 @@
     .ref-grid { grid-template-columns: 1fr; }
     /* Calendar mobile */
     .cal-day { padding: 0 12px 0 14px; margin-bottom: 12px; }
-    .cal-day-header { padding: 12px 0; }
+    .cal-day-header { padding: 12px 0; flex-wrap: wrap; gap: 8px; }
     .cal-day-header .cal-date { font-size: 1.1rem; }
+    .cal-day-header .cal-day-progress { order: 99; }
     .cal-post { padding: 16px; margin-bottom: 8px; }
+    .upload-zone { flex-wrap: wrap; padding: 8px 12px; }
+    .upload-btns { gap: 6px; }
+    .upload-btn { padding: 6px 10px; font-size: 0.55rem; }
+    .upload-zone .upload-label { font-size: 0.5rem; letter-spacing: 2px; }
+    .scheduled-checks { gap: 6px !important; }
+    .cal-filmed-check .filmed-label { font-size: 0.55rem; letter-spacing: 1px; }
+    .cal-filmed-check .filmed-box { width: 16px; height: 16px; }
     .cal-post h4 { font-size: 0.9rem; }
     .cal-caption { padding: 12px 14px; font-size: 0.8rem; }
     .cal-script { padding: 14px 16px; }
@@ -7941,7 +7949,8 @@ Slide 5: &ldquo;7 days free. Start right now. No excuses left.&rdquo; + link sti
 
     // Add per-post upload checkboxes (a) uploaded, b) uploaded, etc.)
     const uploadChecksContainer = document.createElement('div');
-    uploadChecksContainer.style.cssText = 'display:flex;gap:10px;align-items:center;';
+    uploadChecksContainer.className = 'scheduled-checks';
+    uploadChecksContainer.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;';
     const postCount = day.querySelectorAll('.cal-post').length;
     const letters = 'abcdefghijklmnopqrstuvwxyz';
     for (let pi = 0; pi < postCount; pi++) {

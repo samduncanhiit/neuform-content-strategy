@@ -1,0 +1,14 @@
+*.env
+.env.*
+hiit-bot-*.json
+test_graph.py
+.claude/
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.docx
+!Email replies/*.docx
+*.log
+.DS_Store

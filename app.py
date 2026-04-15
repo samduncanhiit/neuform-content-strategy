@@ -6,6 +6,7 @@ Receives messages via Twilio webhook, processes with Claude API, responds via Wh
 import os
 import sys
 import logging
+import traceback
 import threading
 import time
 import requests
@@ -87,6 +88,48 @@ SYSTEM_PROMPT = (
     "Use simple lists with numbers or bullet points. Use *bold* for headings only. "
     "Keep it clean and easy to copy-paste."
 )
+
+# ── Conversation history (per-sender, in-memory, TTL-bounded) ────────────────
+
+_history_lock = threading.Lock()
+_user_history = {}  # sender -> {"messages": [...], "last_ts": float}
+HISTORY_TTL_SEC = 15 * 60  # drop history after 15 min of inactivity
+HISTORY_MAX_MESSAGES = 12  # ≈6 user + 6 assistant turns
+
+
+def _load_history(sender):
+    """Return a copy of the sender's recent text-only conversation, or []."""
+    if not sender:
+        return []
+    now = time.time()
+    with _history_lock:
+        entry = _user_history.get(sender)
+        if not entry:
+            return []
+        if now - entry["last_ts"] > HISTORY_TTL_SEC:
+            del _user_history[sender]
+            return []
+        return list(entry["messages"])
+
+
+def _save_history(sender, messages):
+    """Trim and persist conversation history for a sender."""
+    if not sender:
+        return
+    trimmed = messages[-HISTORY_MAX_MESSAGES:]
+    # Anthropic requires the first message to be role=user
+    while trimmed and trimmed[0].get("role") != "user":
+        trimmed.pop(0)
+    with _history_lock:
+        _user_history[sender] = {"messages": trimmed, "last_ts": time.time()}
+
+
+def _reset_history(sender):
+    if not sender:
+        return
+    with _history_lock:
+        _user_history.pop(sender, None)
+
 
 # ── Security: Rate limiter ────────────────────────────────────────────────────
 
@@ -256,28 +299,28 @@ _MINDBODY_TOOLS = [
     },
     {
         "name": "run_class_report",
-        "description": "New client report on a class: first-timers, intro/trial pricing, new memberships (14d)",
+        "description": "New client report on a class: first-timers, intro/trial pricing, new memberships (14d). Can run on a single class or ALL classes for a day.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "class_name": {"type": "string", "description": "Class name only, e.g. 'HIIT Rox', 'HIIT Maxx'. Do NOT include the time here."},
+                "class_name": {"type": "string", "description": "Class name e.g. 'HIIT Rox', 'HIIT Maxx'. Omit to run report on ALL classes for the day."},
                 "class_date": {"type": "string", "description": "YYYY-MM-DD (default today)"},
-                "class_time": {"type": "string", "description": "Time to disambiguate, e.g. '6am', '18:00', '6:00 PM'"},
+                "class_time": {"type": "string", "description": "Time to pick a specific class, e.g. '6am', '18:00', '6:00 PM'. If given without class_name, returns the one class at that time."},
             },
-            "required": ["class_name"],
+            "required": [],
         },
     },
     {
         "name": "get_noshow_report",
-        "description": "No-show report: clients booked but not signed in after class finished. Use when user asks 'who didn't show up', 'no shows', 'didn't sign in'.",
+        "description": "No-show report: clients booked but not signed in after class finished. Use when user asks 'who didn't show up', 'no shows', 'didn't sign in'. Can run on a single class or ALL classes for a day.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "class_name": {"type": "string", "description": "Class name only, e.g. 'HIIT Rox', 'HIIT Maxx'. Do NOT include the time here."},
+                "class_name": {"type": "string", "description": "Class name e.g. 'HIIT Rox', 'HIIT Maxx'. Omit to run report on ALL classes for the day."},
                 "class_date": {"type": "string", "description": "YYYY-MM-DD (default today)"},
-                "class_time": {"type": "string", "description": "Time to disambiguate, e.g. '6am', '18:00', '6:00 PM'"},
+                "class_time": {"type": "string", "description": "Time to pick a specific class, e.g. '6am', '18:00', '6:00 PM'. If given without class_name, returns the one class at that time."},
             },
-            "required": ["class_name"],
+            "required": [],
         },
     },
 ]
@@ -490,22 +533,28 @@ def handle_tool_call(tool_name, tool_input, user_email=None):
         return format_weekly_summary(summary)
 
     elif tool_name == "run_class_report":
-        from mindbody_helper import run_class_report, format_class_report
-        report = run_class_report(
-            class_name=tool_input["class_name"],
-            class_date=tool_input.get("class_date"),
-            class_time=tool_input.get("class_time"),
-        )
-        return format_class_report(report)
+        from mindbody_helper import run_class_report, run_multi_class_report, format_class_report, format_multi_class_report
+        class_name = tool_input.get("class_name")
+        class_date = tool_input.get("class_date")
+        class_time = tool_input.get("class_time")
+        if class_name:
+            report = run_class_report(class_name=class_name, class_date=class_date, class_time=class_time)
+            return format_class_report(report)
+        else:
+            reports = run_multi_class_report(class_date=class_date, class_time=class_time)
+            return format_multi_class_report(reports)
 
     elif tool_name == "get_noshow_report":
-        from mindbody_helper import get_noshow_report, format_noshow_report
-        report = get_noshow_report(
-            class_name=tool_input["class_name"],
-            class_date=tool_input.get("class_date"),
-            class_time=tool_input.get("class_time"),
-        )
-        return format_noshow_report(report)
+        from mindbody_helper import get_noshow_report, get_multi_noshow_report, format_noshow_report, format_multi_noshow_report
+        class_name = tool_input.get("class_name")
+        class_date = tool_input.get("class_date")
+        class_time = tool_input.get("class_time")
+        if class_name:
+            report = get_noshow_report(class_name=class_name, class_date=class_date, class_time=class_time)
+            return format_noshow_report(report)
+        else:
+            reports = get_multi_noshow_report(class_date=class_date, class_time=class_time)
+            return format_multi_noshow_report(reports)
 
     elif tool_name == "get_trello_tasks":
         from trello_helper import get_trello_tasks, format_trello_tasks
@@ -628,9 +677,17 @@ def _build_system_prompt(user_name, raw_number):
 def get_claude_response(user_message, sender=None):
     """Send a message to Claude with tools and return the text response."""
     client = get_claude_client()
-    messages = [{"role": "user", "content": user_message}]
 
     raw_number = (sender or "").replace("whatsapp:", "").strip()
+
+    if user_message.strip().lower() in ("/reset", "reset chat", "new chat", "clear chat"):
+        _reset_history(raw_number)
+        return "Chat history cleared. What can I help you with?"
+
+    history = _load_history(raw_number)
+    messages = history + [{"role": "user", "content": user_message}]
+    logger.info(f"History: loaded {len(history)} prior messages for {mask_number(raw_number)}")
+
     user_name = USER_NAMES.get(raw_number)
     user_email = USER_EMAILS.get(raw_number, "sam@hiitaustralia.com.au")
     system = _build_system_prompt(user_name, raw_number)
@@ -638,19 +695,22 @@ def get_claude_response(user_message, sender=None):
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=1024,
+        max_tokens=8192,
         system=system,
         tools=tools,
         messages=messages,
     )
+    logger.info(f"Claude first response: stop_reason={response.stop_reason} out_tokens={response.usage.output_tokens}")
 
     # Detect if the user is asking about no-shows so we can correct wrong tool usage
     _noshow_keywords = ("no show", "no-show", "noshow", "didn't show", "didn't sign in",
                         "not signed in", "didn't attend", "didn't turn up", "who missed")
     user_wants_noshow = any(kw in user_message.lower() for kw in _noshow_keywords)
 
-    # Handle tool use loop
-    while response.stop_reason == "tool_use":
+    # Handle tool use loop (max 8 iterations to prevent runaway loops)
+    tool_iterations = 0
+    while response.stop_reason == "tool_use" and tool_iterations < 8:
+        tool_iterations += 1
         assistant_content = response.content
         messages.append({"role": "assistant", "content": assistant_content})
 
@@ -680,19 +740,39 @@ def get_claude_response(user_message, sender=None):
 
         messages.append({"role": "user", "content": tool_results})
 
+        total_result_chars = sum(len(r.get("content", "")) for r in tool_results)
+        logger.info(f"Tool loop iteration {tool_iterations}: {len(tool_results)} results, {total_result_chars} chars total")
+
         response = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=1024,
+            max_tokens=8192,
             system=system,
             tools=tools,
             messages=messages,
         )
+        logger.info(f"Claude loop response: stop_reason={response.stop_reason} out_tokens={response.usage.output_tokens}")
 
+    final_text = None
     for block in response.content:
-        if hasattr(block, "text"):
-            return block.text
+        if getattr(block, "type", None) == "text" and block.text:
+            final_text = block.text
+            break
 
-    return "I processed your request but have no response to show."
+    if final_text is None:
+        logger.warning(f"No text in final response. stop_reason={response.stop_reason} blocks={[getattr(b,'type',None) for b in response.content]}")
+        if response.stop_reason == "max_tokens":
+            final_text = "Sorry, that request was too big for me to finish in one go. Try splitting it into smaller chunks."
+        else:
+            final_text = "I processed your request but have no response to show."
+
+    # Persist clean history: prior turns + this user message + the assistant's text reply.
+    # We intentionally drop tool_use/tool_result blocks — they bloat context and aren't
+    # needed for follow-up conversation (fresh data should be re-fetched via tools).
+    _save_history(raw_number, history + [
+        {"role": "user", "content": user_message},
+        {"role": "assistant", "content": final_text},
+    ])
+    return final_text
 
 
 def is_approved(phone_number):
@@ -808,7 +888,7 @@ def process_message_async(sender, incoming_msg):
         reply_text = get_claude_response(incoming_msg, sender=sender)
         logger.info(f"Claude response received ({len(reply_text)} chars)")
     except Exception as e:
-        logger.error(f"Claude API error: {type(e).__name__}")
+        logger.error(f"Claude API error: {type(e).__name__}: {e}\n{traceback.format_exc()}")
         reply_text = "Sorry, something went wrong. Please try again later."
 
     try:

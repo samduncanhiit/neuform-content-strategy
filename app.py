@@ -78,6 +78,11 @@ SYSTEM_PROMPT = (
     "IMPORTANT: When the user asks about 'my calendar', 'meetings', 'appointments', or 'what do I have on', "
     "always use the get_calendar_events tool (Google Calendar), NOT MindBody classes. "
     "MindBody is only for gym class schedules — use get_todays_classes or get_classes_history for that. "
+    "IMPORTANT: For any cancellation or signup report covering more than 30 days "
+    "(e.g. 'last 2 months', 'last 3 months', 'last 6 months'), you MUST use "
+    "get_membership_movement. It only counts debiting memberships — casual passes, "
+    "offers, and challenge memberships are excluded automatically. Pass "
+    "split_by_month=true when the user asks for a monthly breakdown. "
     "IMPORTANT: When the user asks about no-shows, who didn't show up, who didn't sign in, "
     "or who didn't attend a class, you MUST use the get_noshow_report tool. "
     "Do NOT use get_todays_classes or get_classes_history for this — those only show booking counts. "
@@ -278,6 +283,32 @@ _MINDBODY_TOOLS = [
             "type": "object",
             "properties": {
                 "days_back": {"type": "integer", "description": "7 or 30 (default 7)", "default": 7},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "get_membership_movement",
+        "description": (
+            "Signups AND cancellations of debiting memberships over a variable window. "
+            "Use this for ANY cancellation/signup question spanning more than 30 days "
+            "(e.g. 'cancellations and signups last 3 months', 'membership movement last 2 months'). "
+            "ONLY debiting memberships count — casual passes, offers, and challenge memberships "
+            "are excluded automatically. Pass split_by_month=true when the user asks for a monthly breakdown."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "days_back": {
+                    "type": "integer",
+                    "description": "Days back. 30=last month, 90=last 3 months, 180=last 6 months. Default 90, max 365.",
+                    "default": 90,
+                },
+                "split_by_month": {
+                    "type": "boolean",
+                    "description": "True when user asks for 'by month', 'broken down by month', 'month by month'. Default false.",
+                    "default": False,
+                },
             },
             "required": [],
         },
@@ -521,6 +552,13 @@ def handle_tool_call(tool_name, tool_input, user_email=None):
             days = 7
         members = get_new_members(days_back=days)
         return format_new_members(members, days_back=days)
+
+    elif tool_name == "get_membership_movement":
+        from mindbody_helper import get_membership_movement, format_membership_movement
+        days = min(int(tool_input.get("days_back", 90) or 90), 365)
+        split = bool(tool_input.get("split_by_month", False))
+        result = get_membership_movement(days_back=days)
+        return format_membership_movement(result, days_back=days, split_by_month=split)
 
     elif tool_name == "get_arrears_report":
         from mindbody_helper import get_arrears_report, format_arrears_report

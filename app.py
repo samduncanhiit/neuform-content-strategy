@@ -830,7 +830,7 @@ def mask_number(phone_number):
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 
-WHATSAPP_CHAR_LIMIT = 4000  # WhatsApp allows 4096, leave a small buffer
+WHATSAPP_CHAR_LIMIT = 1500  # Twilio WhatsApp rejects >1600 (error 21617); leave buffer
 
 
 def send_whatsapp_reply(to, body):

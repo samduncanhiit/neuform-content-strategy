@@ -104,6 +104,7 @@ class TestFormatFlat(unittest.TestCase):
         self.assertIn("SIGNUPS: 0", out)
         self.assertIn("CANCELLATIONS: 0", out)
         self.assertIn("Net: 0", out)
+        self.assertIn("(none)", out)
 
 
 if __name__ == "__main__":

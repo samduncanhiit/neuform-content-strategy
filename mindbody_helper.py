@@ -325,6 +325,58 @@ def _is_tracked_membership(name):
     return any(m in name_lower for m in TRACKED_MEMBERSHIPS)
 
 
+def _bucket_movement_by_month(signups, cancellations, window_start, window_end):
+    """Bucket a list of signup/cancellation events into calendar-month buckets.
+
+    Returns an ordered list (oldest first) of dicts:
+        {"month_label": "February 2026",
+         "year_month":  "2026-02",
+         "partial":     bool,
+         "signups":     [event, ...],
+         "cancellations": [event, ...]}
+
+    A bucket is marked `partial` when the window does not cover the full
+    calendar month (e.g. window_start > 1st of month, or window_end < last of month).
+    """
+    from calendar import monthrange
+
+    def _ym(date_str):
+        return date_str[:7]
+
+    def _label(ym):
+        y, m = ym.split("-")
+        names = ["January", "February", "March", "April", "May", "June",
+                 "July", "August", "September", "October", "November", "December"]
+        return f"{names[int(m) - 1]} {y}"
+
+    start_ym = _ym(window_start)
+    end_ym = _ym(window_end)
+    months = []
+    y, m = int(start_ym[:4]), int(start_ym[5:7])
+    ey, em = int(end_ym[:4]), int(end_ym[5:7])
+    while (y, m) <= (ey, em):
+        months.append(f"{y:04d}-{m:02d}")
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+
+    buckets = []
+    for ym in months:
+        year, mon = int(ym[:4]), int(ym[5:7])
+        first_day = f"{ym}-01"
+        last_day = f"{ym}-{monthrange(year, mon)[1]:02d}"
+        partial = window_start > first_day or window_end < last_day
+        buckets.append({
+            "month_label": _label(ym),
+            "year_month": ym,
+            "partial": partial,
+            "signups": [e for e in signups if _ym(e["date"]) == ym],
+            "cancellations": [e for e in cancellations if _ym(e["date"]) == ym],
+        })
+    return buckets
+
+
 def _get_client_membership_info(client_id, days_back=7):
     """Get a client's contract name and status. Only flags as tracked if the contract
     has a TerminationDate within the last N days."""

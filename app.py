@@ -555,7 +555,7 @@ def handle_tool_call(tool_name, tool_input, user_email=None):
 
     elif tool_name == "get_membership_movement":
         from mindbody_helper import get_membership_movement, format_membership_movement
-        days = min(int(tool_input.get("days_back", 90) or 90), 365)
+        days = max(1, min(int(tool_input.get("days_back", 90) or 90), 365))
         split = bool(tool_input.get("split_by_month", False))
         result = get_membership_movement(days_back=days)
         return format_membership_movement(result, days_back=days, split_by_month=split)

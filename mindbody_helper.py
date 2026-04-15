@@ -833,6 +833,66 @@ def format_new_members(members, days_back=7):
     return "\n\n".join(lines)
 
 
+# ── Membership Movement Report ────────────────────────────────────────────────
+
+WHATSAPP_MAX_CHARS = 1500
+
+
+def format_membership_movement(result, days_back=90, split_by_month=False):
+    """Format a membership movement result dict for WhatsApp.
+
+    Flat mode: grouped by membership with names underneath.
+    Monthly mode: same groupings bucketed into calendar months (see Task 4).
+    """
+    signups = result.get("signups", [])
+    cancellations = result.get("cancellations", [])
+    net = len(signups) - len(cancellations)
+    net_str = f"+{net}" if net > 0 else str(net)
+
+    if split_by_month:
+        return _format_membership_movement_monthly(result, days_back, net_str)
+
+    lines = [f"*Membership Movement — Last {days_back} Days*", ""]
+    lines.append(f"*SIGNUPS: {len(signups)}*")
+    lines.extend(_format_group_block(signups))
+    lines.append("")
+    lines.append(f"*CANCELLATIONS: {len(cancellations)}*")
+    lines.extend(_format_group_block(cancellations))
+    lines.append("")
+    lines.append(f"*Net: {net_str}*")
+
+    return _truncate_to_whatsapp("\n".join(lines))
+
+
+def _format_group_block(events):
+    """Group events by membership name, sort by count desc, render bullets."""
+    if not events:
+        return ["(none)"]
+    by_mem = {}
+    for e in events:
+        by_mem.setdefault(e["membership"], []).append(e)
+    ordered = sorted(by_mem.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    out = []
+    for mem_name, group in ordered:
+        out.append(f"• {mem_name} — {len(group)}")
+        for e in sorted(group, key=lambda x: x["date"], reverse=True):
+            out.append(f"   - {e['name']} ({e['date']})")
+    return out
+
+
+def _truncate_to_whatsapp(text):
+    """If text exceeds WHATSAPP_MAX_CHARS, truncate and append a notice."""
+    if len(text) <= WHATSAPP_MAX_CHARS:
+        return text
+    cutoff = WHATSAPP_MAX_CHARS - 40
+    return text[:cutoff].rstrip() + "\n… (truncated — ask for a month)"
+
+
+def _format_membership_movement_monthly(result, days_back, net_str):
+    # Stub — implemented in Task 4.
+    raise NotImplementedError("monthly mode implemented in Task 4")
+
+
 # ── Arrears Report ─────────────────────────────────────────────────────────────
 
 

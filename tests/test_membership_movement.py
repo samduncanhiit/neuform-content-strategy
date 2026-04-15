@@ -56,5 +56,55 @@ class TestBucketByMonth(unittest.TestCase):
         self.assertFalse(buckets[1]["partial"])
 
 
+class TestFormatFlat(unittest.TestCase):
+    def _result(self):
+        return {
+            "days_back": 90,
+            "window_start": "2026-01-16",
+            "window_end": "2026-04-16",
+            "signups": [
+                {"client_id": 1, "contract_id": 10, "name": "Jane Smith",
+                 "membership": "All Access 6 Month", "date": "2026-02-14"},
+                {"client_id": 2, "contract_id": 11, "name": "Alex Ng",
+                 "membership": "All Access 6 Month", "date": "2026-03-01"},
+                {"client_id": 3, "contract_id": 12, "name": "Sam Lee",
+                 "membership": "Student Membership", "date": "2026-02-20"},
+            ],
+            "cancellations": [
+                {"client_id": 4, "contract_id": 13, "name": "John Doe",
+                 "membership": "All Access 6 Month", "date": "2026-03-02"},
+            ],
+        }
+
+    def test_header_and_counts(self):
+        out = mindbody_helper.format_membership_movement(
+            self._result(), days_back=90, split_by_month=False)
+        self.assertIn("Membership Movement", out)
+        self.assertIn("Last 90 Days", out)
+        self.assertIn("SIGNUPS: 3", out)
+        self.assertIn("CANCELLATIONS: 1", out)
+        self.assertIn("Net: +2", out)
+
+    def test_groups_by_membership_with_names(self):
+        out = mindbody_helper.format_membership_movement(
+            self._result(), days_back=90, split_by_month=False)
+        self.assertIn("All Access 6 Month", out)
+        self.assertIn("Jane Smith", out)
+        self.assertIn("Alex Ng", out)
+        self.assertIn("Student Membership", out)
+        self.assertIn("Sam Lee", out)
+        self.assertIn("John Doe", out)
+        self.assertIn("2026-02-14", out)
+
+    def test_empty_result(self):
+        out = mindbody_helper.format_membership_movement(
+            {"days_back": 30, "window_start": "2026-03-17", "window_end": "2026-04-16",
+             "signups": [], "cancellations": []},
+            days_back=30, split_by_month=False)
+        self.assertIn("SIGNUPS: 0", out)
+        self.assertIn("CANCELLATIONS: 0", out)
+        self.assertIn("Net: 0", out)
+
+
 if __name__ == "__main__":
     unittest.main()

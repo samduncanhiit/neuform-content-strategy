@@ -838,11 +838,13 @@ def format_new_members(members, days_back=7):
 WHATSAPP_MAX_CHARS = 1500
 
 
-def format_membership_movement(result, days_back=90, split_by_month=False):
+def format_membership_movement(result, days_back=90, split_by_month=True):
     """Format a membership movement result dict for WhatsApp.
 
-    Flat mode: grouped by membership with names underneath.
-    Monthly mode: same groupings bucketed into calendar months (see Task 4).
+    Always renders a per-month breakdown with counts per membership type
+    (no individual names). The `split_by_month` parameter exists for
+    backwards compatibility and defaults to True; passing False produces
+    a single combined block with the same counts-only style.
     """
     signups = result.get("signups", [])
     cancellations = result.get("cancellations", [])
@@ -854,38 +856,36 @@ def format_membership_movement(result, days_back=90, split_by_month=False):
 
     lines = [f"*Membership Report — Last {days_back} Days*", ""]
     lines.append(f"*SIGNUPS: {len(signups)}*")
-    lines.extend(_format_group_block(signups))
+    lines.extend(_format_counts_block(signups))
     lines.append("")
     lines.append(f"*CANCELLATIONS: {len(cancellations)}*")
-    lines.extend(_format_group_block(cancellations))
+    lines.extend(_format_counts_block(cancellations))
     lines.append("")
     lines.append(f"*Net: {net_str}*")
 
     return _truncate_to_whatsapp("\n".join(lines))
 
 
-def _format_group_block(events):
-    """Group events by membership name, sort by count desc, render bullets."""
+def _format_counts_block(events):
+    """Counts-only rendering: one bullet per membership, sorted by count desc."""
     if not events:
         return ["(none)"]
     by_mem = {}
     for e in events:
-        by_mem.setdefault(e["membership"], []).append(e)
-    ordered = sorted(by_mem.items(), key=lambda kv: (-len(kv[1]), kv[0]))
-    out = []
-    for mem_name, group in ordered:
-        out.append(f"• {mem_name} — {len(group)}")
-        for e in sorted(group, key=lambda x: x["date"], reverse=True):
-            out.append(f"   - {e['name']} ({e['date']})")
-    return out
+        by_mem[e["membership"]] = by_mem.get(e["membership"], 0) + 1
+    ordered = sorted(by_mem.items(), key=lambda kv: (-kv[1], kv[0]))
+    return [f"• {mem_name} — {count}" for mem_name, count in ordered]
+
+
+_TRUNCATION_NOTICE = "\n… (truncated — ask for a shorter window)"
 
 
 def _truncate_to_whatsapp(text):
     """If text exceeds WHATSAPP_MAX_CHARS, truncate and append a notice."""
     if len(text) <= WHATSAPP_MAX_CHARS:
         return text
-    cutoff = WHATSAPP_MAX_CHARS - 40
-    return text[:cutoff].rstrip() + "\n… (truncated — ask for a month)"
+    cutoff = WHATSAPP_MAX_CHARS - len(_TRUNCATION_NOTICE)
+    return text[:cutoff].rstrip() + _TRUNCATION_NOTICE
 
 
 def _format_membership_movement_monthly(result, days_back, net_str):
@@ -897,7 +897,7 @@ def _format_membership_movement_monthly(result, days_back, net_str):
         window_end=result["window_end"],
     )
 
-    lines = [f"*Membership Report — Last {days_back} Days (by month)*", ""]
+    lines = [f"*Membership Report — Last {days_back} Days*", ""]
     for b in buckets:
         label = b["month_label"] + (" (partial)" if b["partial"] else "")
         bucket_net = len(b["signups"]) - len(b["cancellations"])
@@ -910,12 +910,12 @@ def _format_membership_movement_monthly(result, days_back, net_str):
         )
         if b["signups"]:
             lines.append("  Signups:")
-            for sub in _summarise_by_membership(b["signups"]):
-                lines.append(f"   • {sub}")
+            for sub in _format_counts_block(b["signups"]):
+                lines.append(f"   {sub}")
         if b["cancellations"]:
             lines.append("  Cancellations:")
-            for sub in _summarise_by_membership(b["cancellations"]):
-                lines.append(f"   • {sub}")
+            for sub in _format_counts_block(b["cancellations"]):
+                lines.append(f"   {sub}")
         lines.append("")
 
     lines.append(
@@ -923,21 +923,6 @@ def _format_membership_movement_monthly(result, days_back, net_str):
         f"Cancellations: {len(cancellations)} · Net: {net_str}*"
     )
     return _truncate_to_whatsapp("\n".join(lines))
-
-
-def _summarise_by_membership(events):
-    """Render a compact one-line-per-membership summary: 'Name: A, B, C'."""
-    by_mem = {}
-    for e in events:
-        by_mem.setdefault(e["membership"], []).append(e)
-    ordered = sorted(by_mem.items(), key=lambda kv: (-len(kv[1]), kv[0]))
-    lines = []
-    for mem_name, group in ordered:
-        names = ", ".join(
-            e["name"] for e in sorted(group, key=lambda x: x["date"], reverse=True)
-        )
-        lines.append(f"{mem_name}: {names}")
-    return lines
 
 
 def get_membership_movement(days_back=90):

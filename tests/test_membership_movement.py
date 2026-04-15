@@ -85,16 +85,16 @@ class TestFormatFlat(unittest.TestCase):
         self.assertIn("CANCELLATIONS: 1", out)
         self.assertIn("Net: +2", out)
 
-    def test_groups_by_membership_with_names(self):
+    def test_groups_show_counts_not_names(self):
         out = mindbody_helper.format_membership_movement(
             self._result(), days_back=90, split_by_month=False)
-        self.assertIn("All Access 6 Month", out)
-        self.assertIn("Jane Smith", out)
-        self.assertIn("Alex Ng", out)
-        self.assertIn("Student Membership", out)
-        self.assertIn("Sam Lee", out)
-        self.assertIn("John Doe", out)
-        self.assertIn("2026-02-14", out)
+        # Membership types are shown with counts
+        self.assertIn("All Access 6 Month — 2", out)
+        self.assertIn("Student Membership — 1", out)
+        # Individual names are NOT rendered
+        self.assertNotIn("Jane Smith", out)
+        self.assertNotIn("Sam Lee", out)
+        self.assertNotIn("John Doe", out)
 
     def test_empty_result(self):
         out = mindbody_helper.format_membership_movement(
@@ -127,10 +127,10 @@ class TestFormatMonthly(unittest.TestCase):
             ],
         }
 
-    def test_header_says_by_month(self):
+    def test_header(self):
         out = mindbody_helper.format_membership_movement(
             self._result(), days_back=90, split_by_month=True)
-        self.assertIn("by month", out)
+        self.assertIn("Membership Report", out)
         self.assertIn("Last 90 Days", out)
 
     def test_each_month_section_present(self):
@@ -156,26 +156,37 @@ class TestFormatMonthly(unittest.TestCase):
         self.assertIn("Cancellations: 2", out)
         self.assertIn("Net: 0", out)
 
-    def test_events_appear_under_correct_month(self):
+    def test_counts_appear_under_correct_month(self):
+        # Fixture: Feb has 1 All Access 6 Month signup, Mar has 1 Student
+        # Membership signup + 1 All Access 6 Month cancellation, Apr has 1
+        # All Access 6 Month cancellation.
         out = mindbody_helper.format_membership_movement(
             self._result(), days_back=90, split_by_month=True)
         feb_idx = out.find("February 2026")
         mar_idx = out.find("March 2026")
         apr_idx = out.find("April 2026")
-        jane_idx = out.find("Jane Smith")
-        kim_idx = out.find("Kim Lee")
-        self.assertGreater(jane_idx, feb_idx)
-        self.assertLess(jane_idx, mar_idx)
-        self.assertGreater(kim_idx, apr_idx)
+        self.assertGreater(mar_idx, feb_idx)
+        self.assertGreater(apr_idx, mar_idx)
+        # Feb's signup line sits between the Feb header and Mar header
+        feb_section = out[feb_idx:mar_idx]
+        self.assertIn("All Access 6 Month — 1", feb_section)
+        # Mar's section has the Student Membership signup and a cancellation
+        mar_section = out[mar_idx:apr_idx]
+        self.assertIn("Student Membership — 1", mar_section)
+        self.assertIn("All Access 6 Month — 1", mar_section)
+        # Apr's section has a cancellation
+        apr_section = out[apr_idx:]
+        self.assertIn("All Access 6 Month — 1", apr_section)
 
 
 class TestTruncation(unittest.TestCase):
-    def _big_result(self, n=300):
-        mems = ["All Access 6 Month", "Conversion Flexi", "Student Membership"]
+    def _big_result(self, n=100):
+        # Each event uses a unique membership name to force many bullets,
+        # overflowing the WhatsApp cap even in counts-only mode.
         signups = [
             {"client_id": i, "contract_id": 1000 + i,
-             "name": f"Client Number {i:03d}",
-             "membership": mems[i % 3],
+             "name": f"Client {i}",
+             "membership": f"Test Membership Plan Number {i:03d}",
              "date": f"2026-02-{(i % 28) + 1:02d}"}
             for i in range(n)
         ]

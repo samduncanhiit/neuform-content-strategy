@@ -81,9 +81,10 @@ SYSTEM_PROMPT = (
     "IMPORTANT: When the user asks for a 'membership report', 'cancellations and signups', "
     "or any signup/cancellation report covering more than 30 days (e.g. 'membership report "
     "last 3 months', 'membership report for last month', 'last 6 months'), you MUST use "
-    "get_membership_movement. It only counts debiting memberships — casual passes, offers, "
-    "and challenge memberships are excluded automatically. Pass split_by_month=true when "
-    "the user asks for a monthly breakdown ('by month', 'broken down by month'). "
+    "get_membership_movement. It always returns a per-month breakdown with counts per "
+    "membership type (no individual names). It only counts debiting memberships — casual "
+    "passes, offers, and challenge memberships are excluded automatically. RETURN THE TOOL "
+    "OUTPUT VERBATIM to the user — do NOT paraphrase, summarize, reformat, or drop sections. "
     "Do NOT use get_member_stats for these questions — that tool is for the current "
     "active/suspended/expired snapshot only. "
     "IMPORTANT: When the user asks about no-shows, who didn't show up, who didn't sign in, "
@@ -293,12 +294,12 @@ _MINDBODY_TOOLS = [
     {
         "name": "get_membership_movement",
         "description": (
-            "Membership report: signups AND cancellations of debiting memberships over a variable window. "
-            "Use this whenever the user asks for a 'membership report' or any cancellation/signup "
-            "breakdown spanning more than 30 days (e.g. 'membership report last 3 months', "
-            "'membership report for last month', 'signups and cancellations last 6 months'). "
-            "ONLY debiting memberships count — casual passes, offers, and challenge memberships "
-            "are excluded automatically. Pass split_by_month=true when the user asks for a monthly breakdown."
+            "Membership report: signups AND cancellations of debiting memberships over a variable window, "
+            "always broken down by calendar month with counts per membership type (no individual names). "
+            "Use this whenever the user asks for a 'membership report' or any cancellation/signup breakdown "
+            "spanning more than 30 days (e.g. 'membership report last 3 months', 'membership report for "
+            "last month', 'signups and cancellations last 6 months'). ONLY debiting memberships count — "
+            "casual passes, offers, and challenge memberships are excluded automatically."
         ),
         "input_schema": {
             "type": "object",
@@ -307,11 +308,6 @@ _MINDBODY_TOOLS = [
                     "type": "integer",
                     "description": "Days back. 30=last month, 90=last 3 months, 180=last 6 months. Default 90, max 365.",
                     "default": 90,
-                },
-                "split_by_month": {
-                    "type": "boolean",
-                    "description": "True when user asks for 'by month', 'broken down by month', 'month by month'. Default false.",
-                    "default": False,
                 },
             },
             "required": [],
@@ -560,9 +556,8 @@ def handle_tool_call(tool_name, tool_input, user_email=None):
     elif tool_name == "get_membership_movement":
         from mindbody_helper import get_membership_movement, format_membership_movement
         days = max(1, min(int(tool_input.get("days_back", 90) or 90), 365))
-        split = bool(tool_input.get("split_by_month", False))
         result = get_membership_movement(days_back=days)
-        return format_membership_movement(result, days_back=days, split_by_month=split)
+        return format_membership_movement(result, days_back=days, split_by_month=True)
 
     elif tool_name == "get_arrears_report":
         from mindbody_helper import get_arrears_report, format_arrears_report

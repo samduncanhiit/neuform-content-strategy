@@ -107,5 +107,67 @@ class TestFormatFlat(unittest.TestCase):
         self.assertIn("(none)", out)
 
 
+class TestFormatMonthly(unittest.TestCase):
+    def _result(self):
+        return {
+            "days_back": 90,
+            "window_start": "2026-01-16",
+            "window_end": "2026-04-16",
+            "signups": [
+                {"client_id": 1, "contract_id": 10, "name": "Jane Smith",
+                 "membership": "All Access 6 Month", "date": "2026-02-14"},
+                {"client_id": 2, "contract_id": 11, "name": "Alex Ng",
+                 "membership": "Student Membership", "date": "2026-03-01"},
+            ],
+            "cancellations": [
+                {"client_id": 3, "contract_id": 12, "name": "John Doe",
+                 "membership": "All Access 6 Month", "date": "2026-03-02"},
+                {"client_id": 4, "contract_id": 13, "name": "Kim Lee",
+                 "membership": "All Access 6 Month", "date": "2026-04-05"},
+            ],
+        }
+
+    def test_header_says_by_month(self):
+        out = mindbody_helper.format_membership_movement(
+            self._result(), days_back=90, split_by_month=True)
+        self.assertIn("by month", out)
+        self.assertIn("Last 90 Days", out)
+
+    def test_each_month_section_present(self):
+        out = mindbody_helper.format_membership_movement(
+            self._result(), days_back=90, split_by_month=True)
+        self.assertIn("January 2026", out)
+        self.assertIn("February 2026", out)
+        self.assertIn("March 2026", out)
+        self.assertIn("April 2026", out)
+
+    def test_partial_flag_rendered_on_edges(self):
+        out = mindbody_helper.format_membership_movement(
+            self._result(), days_back=90, split_by_month=True)
+        self.assertIn("January 2026 (partial)", out)
+        self.assertIn("April 2026 (partial)", out)
+        self.assertNotIn("February 2026 (partial)", out)
+        self.assertNotIn("March 2026 (partial)", out)
+
+    def test_totals_footer(self):
+        out = mindbody_helper.format_membership_movement(
+            self._result(), days_back=90, split_by_month=True)
+        self.assertIn("Signups: 2", out)
+        self.assertIn("Cancellations: 2", out)
+        self.assertIn("Net: 0", out)
+
+    def test_events_appear_under_correct_month(self):
+        out = mindbody_helper.format_membership_movement(
+            self._result(), days_back=90, split_by_month=True)
+        feb_idx = out.find("February 2026")
+        mar_idx = out.find("March 2026")
+        apr_idx = out.find("April 2026")
+        jane_idx = out.find("Jane Smith")
+        kim_idx = out.find("Kim Lee")
+        self.assertGreater(jane_idx, feb_idx)
+        self.assertLess(jane_idx, mar_idx)
+        self.assertGreater(kim_idx, apr_idx)
+
+
 if __name__ == "__main__":
     unittest.main()

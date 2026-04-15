@@ -889,8 +889,55 @@ def _truncate_to_whatsapp(text):
 
 
 def _format_membership_movement_monthly(result, days_back, net_str):
-    # Stub — implemented in Task 4.
-    raise NotImplementedError("monthly mode implemented in Task 4")
+    signups = result.get("signups", [])
+    cancellations = result.get("cancellations", [])
+    buckets = _bucket_movement_by_month(
+        signups, cancellations,
+        window_start=result["window_start"],
+        window_end=result["window_end"],
+    )
+
+    lines = [f"*Membership Movement — Last {days_back} Days (by month)*", ""]
+    for b in buckets:
+        label = b["month_label"] + (" (partial)" if b["partial"] else "")
+        bucket_net = len(b["signups"]) - len(b["cancellations"])
+        bucket_net_str = f"+{bucket_net}" if bucket_net > 0 else str(bucket_net)
+        lines.append(f"*── {label} ──*")
+        lines.append(
+            f"Signups: {len(b['signups'])}   "
+            f"Cancellations: {len(b['cancellations'])}   "
+            f"Net: {bucket_net_str}"
+        )
+        if b["signups"]:
+            lines.append("  Signups:")
+            for sub in _summarise_by_membership(b["signups"]):
+                lines.append(f"   • {sub}")
+        if b["cancellations"]:
+            lines.append("  Cancellations:")
+            for sub in _summarise_by_membership(b["cancellations"]):
+                lines.append(f"   • {sub}")
+        lines.append("")
+
+    lines.append(
+        f"*Totals — Signups: {len(signups)} · "
+        f"Cancellations: {len(cancellations)} · Net: {net_str}*"
+    )
+    return _truncate_to_whatsapp("\n".join(lines))
+
+
+def _summarise_by_membership(events):
+    """Render a compact one-line-per-membership summary: 'Name: A, B, C'."""
+    by_mem = {}
+    for e in events:
+        by_mem.setdefault(e["membership"], []).append(e)
+    ordered = sorted(by_mem.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    lines = []
+    for mem_name, group in ordered:
+        names = ", ".join(
+            e["name"] for e in sorted(group, key=lambda x: x["date"], reverse=True)
+        )
+        lines.append(f"{mem_name}: {names}")
+    return lines
 
 
 # ── Arrears Report ─────────────────────────────────────────────────────────────

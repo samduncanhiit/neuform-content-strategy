@@ -169,5 +169,37 @@ class TestFormatMonthly(unittest.TestCase):
         self.assertGreater(kim_idx, apr_idx)
 
 
+class TestTruncation(unittest.TestCase):
+    def _big_result(self, n=300):
+        mems = ["All Access 6 Month", "Conversion Flexi", "Student Membership"]
+        signups = [
+            {"client_id": i, "contract_id": 1000 + i,
+             "name": f"Client Number {i:03d}",
+             "membership": mems[i % 3],
+             "date": f"2026-02-{(i % 28) + 1:02d}"}
+            for i in range(n)
+        ]
+        return {
+            "days_back": 90,
+            "window_start": "2026-01-16", "window_end": "2026-04-16",
+            "signups": signups, "cancellations": [],
+        }
+
+    def test_flat_mode_respects_cap(self):
+        out = mindbody_helper.format_membership_movement(
+            self._big_result(), days_back=90, split_by_month=False)
+        self.assertLessEqual(len(out), mindbody_helper.WHATSAPP_MAX_CHARS)
+
+    def test_monthly_mode_respects_cap(self):
+        out = mindbody_helper.format_membership_movement(
+            self._big_result(), days_back=90, split_by_month=True)
+        self.assertLessEqual(len(out), mindbody_helper.WHATSAPP_MAX_CHARS)
+
+    def test_truncation_marker_present_when_truncated(self):
+        out = mindbody_helper.format_membership_movement(
+            self._big_result(), days_back=90, split_by_month=False)
+        self.assertIn("truncated", out)
+
+
 if __name__ == "__main__":
     unittest.main()

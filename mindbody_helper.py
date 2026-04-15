@@ -940,6 +940,99 @@ def _summarise_by_membership(events):
     return lines
 
 
+def get_membership_movement(days_back=90):
+    """Return signups and cancellations of tracked memberships over the last N days.
+
+    Signup  = tracked contract with StartDate within the window.
+    Cancel  = tracked contract with TerminationDate within the window.
+    Only contracts matching TRACKED_MEMBERSHIPS count. A single contract can
+    appear in both lists if it both started and terminated in the window.
+
+    Cached for 1 hour per days_back value.
+    """
+    cache_key = f"membership_movement_{days_back}"
+    cached = _cache_get(cache_key, ttl=CACHE_TTL_CLASSES)
+    if cached is not None:
+        logger.info(f"Using cached membership movement ({days_back}d)")
+        return cached
+
+    window_end = _now().strftime("%Y-%m-%d")
+    window_start = (_now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+    modified_since = (_now() - timedelta(days=days_back)).strftime("%Y-%m-%dT00:00:00")
+
+    candidates = _get_all_clients_paginated(
+        {"LastModifiedDate": modified_since, "IncludeInactive": "true"},
+        max_pages=15,
+    )
+
+    signups = []
+    cancellations = []
+    seen_signup = set()
+    seen_cancellation = set()
+
+    for c in candidates:
+        client_id = c.get("Id")
+        if not client_id:
+            continue
+        try:
+            contract_data = _api_get("client/clientcontracts", {"ClientId": client_id})
+        except Exception as e:
+            logger.warning(f"clientcontracts lookup failed for {client_id}: {e}")
+            continue
+
+        for contract in contract_data.get("Contracts", []) or []:
+            contract_name = contract.get("ContractName") or ""
+            if not _is_tracked_membership(contract_name):
+                continue
+
+            contract_id = contract.get("Id") or contract.get("ContractId") or 0
+            client_name = _client_name(c)
+
+            start_date = (contract.get("StartDate") or "")[:10]
+            if start_date and window_start <= start_date <= window_end:
+                key = (client_id, contract_id)
+                if key not in seen_signup:
+                    seen_signup.add(key)
+                    signups.append({
+                        "client_id": client_id,
+                        "contract_id": contract_id,
+                        "name": client_name,
+                        "membership": contract_name,
+                        "date": start_date,
+                    })
+
+            term_date = (contract.get("TerminationDate") or "")[:10]
+            if term_date and window_start <= term_date <= window_end:
+                key = (client_id, contract_id)
+                if key not in seen_cancellation:
+                    seen_cancellation.add(key)
+                    cancellations.append({
+                        "client_id": client_id,
+                        "contract_id": contract_id,
+                        "name": client_name,
+                        "membership": contract_name,
+                        "date": term_date,
+                    })
+
+    signups.sort(key=lambda x: x["date"], reverse=True)
+    cancellations.sort(key=lambda x: x["date"], reverse=True)
+
+    result = {
+        "days_back": days_back,
+        "window_start": window_start,
+        "window_end": window_end,
+        "signups": signups,
+        "cancellations": cancellations,
+    }
+    _cache_set(cache_key, result)
+    logger.info(
+        f"Membership movement {days_back}d: "
+        f"{len(signups)} signups, {len(cancellations)} cancellations "
+        f"(scanned {len(candidates)} clients)"
+    )
+    return result
+
+
 # ── Arrears Report ─────────────────────────────────────────────────────────────
 
 

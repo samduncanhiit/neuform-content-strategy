@@ -852,7 +852,7 @@ def format_membership_movement(result, days_back=90, split_by_month=False):
     if split_by_month:
         return _format_membership_movement_monthly(result, days_back, net_str)
 
-    lines = [f"*Membership Movement — Last {days_back} Days*", ""]
+    lines = [f"*Membership Report — Last {days_back} Days*", ""]
     lines.append(f"*SIGNUPS: {len(signups)}*")
     lines.extend(_format_group_block(signups))
     lines.append("")
@@ -897,7 +897,7 @@ def _format_membership_movement_monthly(result, days_back, net_str):
         window_end=result["window_end"],
     )
 
-    lines = [f"*Membership Movement — Last {days_back} Days (by month)*", ""]
+    lines = [f"*Membership Report — Last {days_back} Days (by month)*", ""]
     for b in buckets:
         label = b["month_label"] + (" (partial)" if b["partial"] else "")
         bucket_net = len(b["signups"]) - len(b["cancellations"])

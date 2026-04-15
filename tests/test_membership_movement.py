@@ -79,7 +79,7 @@ class TestFormatFlat(unittest.TestCase):
     def test_header_and_counts(self):
         out = mindbody_helper.format_membership_movement(
             self._result(), days_back=90, split_by_month=False)
-        self.assertIn("Membership Movement", out)
+        self.assertIn("Membership Report", out)
         self.assertIn("Last 90 Days", out)
         self.assertIn("SIGNUPS: 3", out)
         self.assertIn("CANCELLATIONS: 1", out)

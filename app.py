@@ -78,11 +78,14 @@ SYSTEM_PROMPT = (
     "IMPORTANT: When the user asks about 'my calendar', 'meetings', 'appointments', or 'what do I have on', "
     "always use the get_calendar_events tool (Google Calendar), NOT MindBody classes. "
     "MindBody is only for gym class schedules — use get_todays_classes or get_classes_history for that. "
-    "IMPORTANT: For any cancellation or signup report covering more than 30 days "
-    "(e.g. 'last 2 months', 'last 3 months', 'last 6 months'), you MUST use "
-    "get_membership_movement. It only counts debiting memberships — casual passes, "
-    "offers, and challenge memberships are excluded automatically. Pass "
-    "split_by_month=true when the user asks for a monthly breakdown. "
+    "IMPORTANT: When the user asks for a 'membership report', 'cancellations and signups', "
+    "or any signup/cancellation report covering more than 30 days (e.g. 'membership report "
+    "last 3 months', 'membership report for last month', 'last 6 months'), you MUST use "
+    "get_membership_movement. It only counts debiting memberships — casual passes, offers, "
+    "and challenge memberships are excluded automatically. Pass split_by_month=true when "
+    "the user asks for a monthly breakdown ('by month', 'broken down by month'). "
+    "Do NOT use get_member_stats for these questions — that tool is for the current "
+    "active/suspended/expired snapshot only. "
     "IMPORTANT: When the user asks about no-shows, who didn't show up, who didn't sign in, "
     "or who didn't attend a class, you MUST use the get_noshow_report tool. "
     "Do NOT use get_todays_classes or get_classes_history for this — those only show booking counts. "
@@ -290,9 +293,10 @@ _MINDBODY_TOOLS = [
     {
         "name": "get_membership_movement",
         "description": (
-            "Signups AND cancellations of debiting memberships over a variable window. "
-            "Use this for ANY cancellation/signup question spanning more than 30 days "
-            "(e.g. 'cancellations and signups last 3 months', 'membership movement last 2 months'). "
+            "Membership report: signups AND cancellations of debiting memberships over a variable window. "
+            "Use this whenever the user asks for a 'membership report' or any cancellation/signup "
+            "breakdown spanning more than 30 days (e.g. 'membership report last 3 months', "
+            "'membership report for last month', 'signups and cancellations last 6 months'). "
             "ONLY debiting memberships count — casual passes, offers, and challenge memberships "
             "are excluded automatically. Pass split_by_month=true when the user asks for a monthly breakdown."
         ),

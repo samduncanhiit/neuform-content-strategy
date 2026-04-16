@@ -84,6 +84,10 @@ SYSTEM_PROMPT = (
     "IMPORTANT: When the user asks about 'my calendar', 'meetings', 'appointments', or 'what do I have on', "
     "always use the get_calendar_events tool (Google Calendar), NOT MindBody classes. "
     "MindBody is only for gym class schedules — use get_todays_classes or get_classes_history for that. "
+    "When the user asks about a specific member's details, membership, how long they've been "
+    "a member, or how many classes they've done, use get_client_detail with their name. "
+    "Do NOT use search_clients for this — search_clients only finds a member, it doesn't "
+    "return membership or attendance data. "
     "IMPORTANT: When the user asks for a 'membership report', 'cancellations and signups', "
     "or any signup/cancellation report covering more than 30 days (e.g. 'membership report "
     "last 3 months', 'membership report for last month', 'last 6 months'), you MUST use "
@@ -251,6 +255,29 @@ _MINDBODY_TOOLS = [
                 "search_text": {"type": "string", "description": "Name, email, or phone"},
             },
             "required": ["search_text"],
+        },
+    },
+    {
+        "name": "get_client_detail",
+        "description": (
+            "Detailed profile for a specific client: current membership, how long they have "
+            "been a member, and class attendance breakdown (all time, 30 days, 90 days). "
+            "Use when the user asks about a specific member's details, classes done, membership, "
+            "or how long they've been coming. Pass the client's name as client_name."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "client_name": {
+                    "type": "string",
+                    "description": "Client name (or partial name, email, phone) to search for",
+                },
+                "days_back": {
+                    "type": "integer",
+                    "description": "Optional custom window in days (e.g. 7 for last week, 14 for last 2 weeks). Omit for default 30d/90d/all-time only.",
+                },
+            },
+            "required": ["client_name"],
         },
     },
     {
@@ -527,6 +554,15 @@ def handle_tool_call(tool_name, tool_input, user_email=None):
         search_text = tool_input.get("search_text", "")[:100]  # Cap search length
         clients = search_clients(search_text)
         return format_clients(clients)
+
+    elif tool_name == "get_client_detail":
+        from mindbody_helper import get_client_detail, format_client_detail
+        name = (tool_input.get("client_name") or "")[:100]
+        days = tool_input.get("days_back")
+        if days is not None:
+            days = max(1, min(int(days or 0), 365))
+        result = get_client_detail(client_name=name, days_back=days)
+        return format_client_detail(result)
 
     elif tool_name == "get_member_stats":
         from mindbody_helper import get_member_stats, format_member_stats

@@ -835,7 +835,7 @@ def format_new_members(members, days_back=7):
 
 # ── Membership Movement Report ────────────────────────────────────────────────
 
-WHATSAPP_MAX_CHARS = 1500
+WHATSAPP_MAX_CHARS = 4000  # formatter-internal cap; send_whatsapp_reply chunks for Twilio's 1600-char WhatsApp limit
 
 
 def format_membership_movement(result, days_back=90, split_by_month=True):

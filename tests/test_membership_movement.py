@@ -180,9 +180,9 @@ class TestFormatMonthly(unittest.TestCase):
 
 
 class TestTruncation(unittest.TestCase):
-    def _big_result(self, n=100):
+    def _big_result(self, n=300):
         # Each event uses a unique membership name to force many bullets,
-        # overflowing the WhatsApp cap even in counts-only mode.
+        # overflowing the formatter cap even in counts-only mode.
         signups = [
             {"client_id": i, "contract_id": 1000 + i,
              "name": f"Client {i}",

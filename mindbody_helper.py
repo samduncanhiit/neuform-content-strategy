@@ -940,6 +940,109 @@ def _format_date(iso_date):
         return iso_date
 
 
+def get_client_detail(client_name, days_back=None):
+    """Look up a client by name and return their membership + attendance profile.
+
+    Returns a result dict with status 'found', 'not_found', or 'multiple'.
+    """
+    clients = search_clients(client_name)
+
+    if not clients:
+        return {"status": "not_found", "search_text": client_name}
+
+    if len(clients) > 1:
+        return {
+            "status": "multiple",
+            "matches": [
+                {"name": c["name"], "id": c["id"], "email": c["email"]}
+                for c in clients[:10]
+            ],
+        }
+
+    client = clients[0]
+    client_id = client["id"]
+    client_name_display = client["name"]
+
+    # Member since — fetch full client record for CreationDate
+    member_since = "Unknown"
+    try:
+        client_data = _api_get("client/clients", {"ClientIds": client_id})
+        full_clients = client_data.get("Clients") or []
+        if full_clients:
+            member_since = (full_clients[0].get("CreationDate") or "")[:10] or "Unknown"
+    except Exception as e:
+        logger.warning(f"Client lookup failed for {client_id}: {e}")
+
+    # Active memberships
+    memberships = []
+    try:
+        mem_data = _api_get("client/activeclientmemberships", {"ClientIds": client_id})
+        for cm in mem_data.get("ClientMemberships") or []:
+            for m in cm.get("Memberships") or []:
+                name = m.get("Name")
+                if name:
+                    memberships.append(name)
+    except Exception as e:
+        logger.warning(f"Membership lookup failed for {client_id}: {e}")
+
+    # Visit history — fetch all visits from a generous start date
+    now = _now()
+    today_iso = now.strftime("%Y-%m-%dT23:59:59")
+    all_visits = []
+    try:
+        visit_data = _paginated_get(
+            "client/clientvisits", "Visits",
+            {"ClientId": client_id, "StartDate": "2010-01-01T00:00:00", "EndDate": today_iso},
+            max_pages=10,
+        )
+        all_visits = visit_data if isinstance(visit_data, list) else []
+    except Exception as e:
+        logger.warning(f"Visit lookup failed for {client_id}: {e}")
+
+    # Count attended visits (SignedIn == True) per window
+    cutoff_30 = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+    cutoff_90 = (now - timedelta(days=90)).strftime("%Y-%m-%d")
+    cutoff_custom = (now - timedelta(days=days_back)).strftime("%Y-%m-%d") if days_back and days_back > 0 else None
+
+    classes_all = 0
+    classes_30 = 0
+    classes_90 = 0
+    classes_custom = 0
+
+    for v in all_visits:
+        if not v.get("SignedIn", False):
+            continue
+        classes_all += 1
+        visit_date = (v.get("StartDateTime") or "")[:10]
+        if visit_date >= cutoff_90:
+            classes_90 += 1
+        if visit_date >= cutoff_30:
+            classes_30 += 1
+        if cutoff_custom and visit_date >= cutoff_custom:
+            classes_custom += 1
+
+    result = {
+        "status": "found",
+        "name": client_name_display,
+        "member_since": member_since,
+        "memberships": memberships,
+        "classes_all_time": classes_all,
+        "classes_30d": classes_30,
+        "classes_90d": classes_90,
+    }
+
+    if days_back and days_back > 0:
+        result["classes_custom"] = classes_custom
+        result["classes_custom_label"] = days_back
+
+    logger.info(
+        f"Client detail for {client_name_display}: "
+        f"{len(memberships)} memberships, {classes_all} total visits "
+        f"({classes_30} in 30d, {classes_90} in 90d)"
+    )
+    return result
+
+
 _TRUNCATION_NOTICE = "\n… (truncated — ask for a shorter window)"
 
 

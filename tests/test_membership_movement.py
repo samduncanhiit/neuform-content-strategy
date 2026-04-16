@@ -212,5 +212,107 @@ class TestTruncation(unittest.TestCase):
         self.assertIn("truncated", out)
 
 
+class TestFormatClientDetail(unittest.TestCase):
+    def test_found_basic(self):
+        result = {
+            "status": "found",
+            "name": "Jane Smith",
+            "member_since": "2024-03-14",
+            "memberships": ["All Access 6 Month"],
+            "classes_all_time": 247,
+            "classes_30d": 18,
+            "classes_90d": 52,
+        }
+        out = mindbody_helper.format_client_detail(result)
+        self.assertIn("Jane Smith", out)
+        self.assertIn("14 March 2024", out)
+        self.assertIn("All Access 6 Month", out)
+        self.assertIn("247 (all time)", out)
+        self.assertIn("Last 30 days: 18", out)
+        self.assertIn("Last 90 days: 52", out)
+
+    def test_found_with_custom_window(self):
+        result = {
+            "status": "found",
+            "name": "Jane Smith",
+            "member_since": "2024-03-14",
+            "memberships": ["All Access 6 Month"],
+            "classes_all_time": 247,
+            "classes_30d": 18,
+            "classes_90d": 52,
+            "classes_custom": 6,
+            "classes_custom_label": 14,
+        }
+        out = mindbody_helper.format_client_detail(result)
+        self.assertIn("Last 14 days: 6", out)
+        self.assertIn("Last 30 days: 18", out)
+        self.assertIn("Last 90 days: 52", out)
+
+    def test_found_multiple_memberships(self):
+        result = {
+            "status": "found",
+            "name": "Jane Smith",
+            "member_since": "2024-03-14",
+            "memberships": ["All Access 6 Month", "Student Membership"],
+            "classes_all_time": 10,
+            "classes_30d": 3,
+            "classes_90d": 8,
+        }
+        out = mindbody_helper.format_client_detail(result)
+        self.assertIn("Current memberships:", out)
+        self.assertIn("All Access 6 Month", out)
+        self.assertIn("Student Membership", out)
+
+    def test_found_no_active_membership(self):
+        result = {
+            "status": "found",
+            "name": "Jane Smith",
+            "member_since": "2024-03-14",
+            "memberships": [],
+            "classes_all_time": 50,
+            "classes_30d": 0,
+            "classes_90d": 0,
+        }
+        out = mindbody_helper.format_client_detail(result)
+        self.assertIn("No active membership", out)
+
+    def test_found_zero_visits(self):
+        result = {
+            "status": "found",
+            "name": "Jane Smith",
+            "member_since": "2024-03-14",
+            "memberships": ["All Access 6 Month"],
+            "classes_all_time": 0,
+            "classes_30d": 0,
+            "classes_90d": 0,
+        }
+        out = mindbody_helper.format_client_detail(result)
+        self.assertIn("0 (all time)", out)
+        self.assertIn("Last 30 days: 0", out)
+
+    def test_not_found(self):
+        result = {
+            "status": "not_found",
+            "search_text": "Janee Smyth",
+        }
+        out = mindbody_helper.format_client_detail(result)
+        self.assertIn("No client found", out)
+        self.assertIn("Janee Smyth", out)
+
+    def test_multiple_matches(self):
+        result = {
+            "status": "multiple",
+            "matches": [
+                {"name": "Jane Smith", "id": 123, "email": "jane@email.com"},
+                {"name": "Jane Doe", "id": 456, "email": "jdoe@email.com"},
+            ],
+        }
+        out = mindbody_helper.format_client_detail(result)
+        self.assertIn("Found 2 matches", out)
+        self.assertIn("Jane Smith", out)
+        self.assertIn("Jane Doe", out)
+        self.assertIn("Which one", out)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -976,7 +976,7 @@ def get_client_detail(client_name, days_back=None):
     # Active memberships
     memberships = []
     try:
-        mem_data = _api_get("client/activeclientmemberships", {"ClientIds": client_id})
+        mem_data = _api_get("client/activeclientmemberships", [("ClientIds", str(client_id))])
         for cm in mem_data.get("ClientMemberships") or []:
             for m in cm.get("Memberships") or []:
                 name = m.get("Name")

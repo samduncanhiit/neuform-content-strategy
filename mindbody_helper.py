@@ -877,6 +877,69 @@ def _format_counts_block(events):
     return [f"• {mem_name} — {count}" for mem_name, count in ordered]
 
 
+# ── Client Detail ─────────────────────────────────────────────────────────────
+
+
+def format_client_detail(result):
+    """Format a client detail result dict for WhatsApp. Three modes:
+    found (full profile), not_found, multiple (disambiguation)."""
+    status = result.get("status")
+
+    if status == "not_found":
+        return (
+            f'No client found for "{result["search_text"]}". '
+            "Check the spelling or try a different name/email/phone."
+        )
+
+    if status == "multiple":
+        matches = result["matches"]
+        lines = [f'Found {len(matches)} matches for your search:']
+        for i, m in enumerate(matches, 1):
+            email = m.get("email") or "no email"
+            lines.append(f"{i}. {m['name']} ({email})")
+        lines.append("")
+        lines.append("Which one did you mean?")
+        return "\n".join(lines)
+
+    # status == "found"
+    date_str = _format_date(result["member_since"])
+    lines = [result["name"]]
+    lines.append(f"Member since: {date_str}")
+
+    memberships = result.get("memberships") or []
+    if len(memberships) == 0:
+        lines.append("No active membership")
+    elif len(memberships) == 1:
+        lines.append(f"Current membership: {memberships[0]}")
+    else:
+        lines.append("Current memberships:")
+        for m in memberships:
+            lines.append(f"  {m}")
+
+    lines.append("")
+    lines.append(f"Classes attended: {result['classes_all_time']} (all time)")
+
+    if "classes_custom" in result and "classes_custom_label" in result:
+        lines.append(f"  Last {result['classes_custom_label']} days: {result['classes_custom']}")
+
+    lines.append(f"  Last 30 days: {result['classes_30d']}")
+    lines.append(f"  Last 90 days: {result['classes_90d']}")
+
+    return "\n".join(lines)
+
+
+def _format_date(iso_date):
+    """Convert YYYY-MM-DD to '14 March 2024' for display."""
+    if not iso_date or len(iso_date) < 10:
+        return iso_date or "Unknown"
+    try:
+        from datetime import datetime as dt
+        d = dt.strptime(iso_date[:10], "%Y-%m-%d")
+        return d.strftime("%-d %B %Y")
+    except (ValueError, TypeError):
+        return iso_date
+
+
 _TRUNCATION_NOTICE = "\n… (truncated — ask for a shorter window)"
 
 

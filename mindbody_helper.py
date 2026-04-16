@@ -854,14 +854,14 @@ def format_membership_movement(result, days_back=90, split_by_month=True):
     if split_by_month:
         return _format_membership_movement_monthly(result, days_back, net_str)
 
-    lines = [f"*Membership Report — Last {days_back} Days*", ""]
-    lines.append(f"*SIGNUPS: {len(signups)}*")
+    lines = [f"Membership Report — Last {days_back} Days", ""]
+    lines.append(f"SIGNUPS: {len(signups)}")
     lines.extend(_format_counts_block(signups))
     lines.append("")
-    lines.append(f"*CANCELLATIONS: {len(cancellations)}*")
+    lines.append(f"CANCELLATIONS: {len(cancellations)}")
     lines.extend(_format_counts_block(cancellations))
     lines.append("")
-    lines.append(f"*Net: {net_str}*")
+    lines.append(f"Net: {net_str}")
 
     return _truncate_to_whatsapp("\n".join(lines))
 
@@ -897,12 +897,12 @@ def _format_membership_movement_monthly(result, days_back, net_str):
         window_end=result["window_end"],
     )
 
-    lines = [f"*Membership Report — Last {days_back} Days*", ""]
+    lines = [f"Membership Report — Last {days_back} Days", ""]
     for b in buckets:
         label = b["month_label"] + (" (partial)" if b["partial"] else "")
         bucket_net = len(b["signups"]) - len(b["cancellations"])
         bucket_net_str = f"+{bucket_net}" if bucket_net > 0 else str(bucket_net)
-        lines.append(f"*── {label} ──*")
+        lines.append(label)
         lines.append(
             f"Signups: {len(b['signups'])}   "
             f"Cancellations: {len(b['cancellations'])}   "
@@ -919,8 +919,8 @@ def _format_membership_movement_monthly(result, days_back, net_str):
         lines.append("")
 
     lines.append(
-        f"*Totals — Signups: {len(signups)} · "
-        f"Cancellations: {len(cancellations)} · Net: {net_str}*"
+        f"Totals — Signups: {len(signups)} · "
+        f"Cancellations: {len(cancellations)} · Net: {net_str}"
     )
     return _truncate_to_whatsapp("\n".join(lines))
 

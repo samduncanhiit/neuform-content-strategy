@@ -973,17 +973,20 @@ def get_client_detail(client_name, days_back=None):
     except Exception as e:
         logger.warning(f"Client lookup failed for {client_id}: {e}")
 
-    # Active memberships
+    # Active memberships — use clientcontracts (activeclientmemberships returns 400)
     memberships = []
+    today = _now().strftime("%Y-%m-%d")
     try:
-        mem_data = _api_get("client/activeclientmemberships", [("ClientIds", str(client_id))])
-        for cm in mem_data.get("ClientMemberships") or []:
-            for m in cm.get("Memberships") or []:
-                name = m.get("Name")
-                if name:
-                    memberships.append(name)
+        contract_data = _api_get("client/clientcontracts", {"ClientId": client_id})
+        for contract in contract_data.get("Contracts") or []:
+            term_date = (contract.get("TerminationDate") or "")[:10]
+            if term_date and term_date < today:
+                continue
+            name = contract.get("ContractName")
+            if name:
+                memberships.append(name)
     except Exception as e:
-        logger.warning(f"Membership lookup failed for {client_id}: {e}")
+        logger.warning(f"Contract lookup failed for {client_id}: {e}")
 
     # Visit history — fetch all visits from a generous start date
     now = _now()

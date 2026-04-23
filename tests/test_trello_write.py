@@ -407,3 +407,59 @@ class TestEditTrelloCardHandler(unittest.TestCase):
             raw_number="+61421188443",
         )
         self.assertIn("No card matching", result)
+
+
+class TestRemoveTrelloCardHandler(unittest.TestCase):
+    def setUp(self):
+        import app
+        self.app = app
+
+    @patch("trello_helper.archive_card")
+    @patch("trello_helper._find_cards")
+    @patch("trello_helper._find_board_id")
+    def test_preview_does_not_archive(self, mock_board, mock_find, mock_archive):
+        mock_board.return_value = "b1"
+        mock_find.return_value = [
+            {"id": "c1", "name": "Buy kettlebells", "list_name": "To Do List",
+             "list_id": "l1", "url": "", "score": 15},
+        ]
+        result = self.app.handle_tool_call(
+            "remove_trello_card", {"title": "kettlebell"}, raw_number="+61421188443",
+        )
+        self.assertIn("Buy kettlebells", result)
+        self.assertIn("yes", result.lower())
+        mock_archive.assert_not_called()
+
+    @patch("trello_helper.archive_card")
+    @patch("trello_helper._find_cards")
+    @patch("trello_helper._find_board_id")
+    def test_confirmed_archives(self, mock_board, mock_find, mock_archive):
+        mock_board.return_value = "b1"
+        mock_find.return_value = [
+            {"id": "c1", "name": "Buy kettlebells", "list_name": "To Do List",
+             "list_id": "l1", "url": "", "score": 15},
+        ]
+        result = self.app.handle_tool_call(
+            "remove_trello_card",
+            {"title": "kettlebell", "confirmed": True},
+            raw_number="+61421188443",
+        )
+        self.assertIn("Archived", result)
+        mock_archive.assert_called_with("c1")
+
+    @patch("trello_helper._find_cards")
+    @patch("trello_helper._find_board_id")
+    def test_multiple_matches_asks_to_clarify_even_with_confirmed(self, mock_board, mock_find):
+        mock_board.return_value = "b1"
+        mock_find.return_value = [
+            {"id": "c1", "name": "Buy kettlebells", "list_name": "To Do List",
+             "list_id": "l1", "url": "", "score": 15},
+            {"id": "c2", "name": "kettlebell rack install", "list_name": "Doing",
+             "list_id": "l2", "url": "", "score": 15},
+        ]
+        result = self.app.handle_tool_call(
+            "remove_trello_card",
+            {"title": "kettlebell", "confirmed": True},
+            raw_number="+61421188443",
+        )
+        self.assertIn("more specific", result.lower())

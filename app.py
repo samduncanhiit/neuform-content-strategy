@@ -827,6 +827,32 @@ def handle_tool_call(tool_name, tool_input, user_email=None, raw_number=None):
         )
         return f"Updated '{m['name']}'."
 
+    elif tool_name == "remove_trello_card":
+        from trello_helper import _find_board_id, _find_cards, archive_card
+        cfg = USER_TRELLO.get(raw_number)
+        if not cfg:
+            return "Trello write access is not configured for you."
+        board_id = _find_board_id(cfg["board"])
+        if not board_id:
+            return f"Could not find Trello board '{cfg['board']}'."
+        matches = _find_cards(board_id, tool_input.get("title", ""))
+        if not matches:
+            return f"No card matching '{tool_input.get('title')}' on {cfg['board']}."
+        if len(matches) > 1:
+            top = matches[:5]
+            lines = ["Multiple matches — please be more specific:"]
+            for m in top:
+                lines.append(f"  - {m['name']} ({m['list_name']})")
+            return "\n".join(lines)
+        m = matches[0]
+        if not tool_input.get("confirmed"):
+            return (
+                f"Found '{m['name']}' in {m['list_name']}. "
+                f"Reply 'yes' to archive."
+            )
+        archive_card(m["id"])
+        return f"Archived '{m['name']}'."
+
     # ── Google Calendar tools ─────────────────────────────────────────────────
     elif tool_name == "get_calendar_events":
         from gcal_helper import get_events, format_events

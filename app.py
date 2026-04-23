@@ -768,6 +768,32 @@ def handle_tool_call(tool_name, tool_input, user_email=None, raw_number=None):
             msg += f"\n{url}"
         return msg
 
+    elif tool_name == "move_trello_card":
+        from trello_helper import _find_board_id, _find_list, _find_cards, move_card
+        cfg = USER_TRELLO.get(raw_number)
+        if not cfg:
+            return "Trello write access is not configured for you."
+        board_id = _find_board_id(cfg["board"])
+        if not board_id:
+            return f"Could not find Trello board '{cfg['board']}'."
+        dest_list_name = tool_input.get("list_name") or cfg["done_list"]
+        dest = _find_list(board_id, dest_list_name)
+        if not dest:
+            return f"No list matching '{dest_list_name}' on {cfg['board']}."
+        dest_id, dest_canonical = dest
+        matches = _find_cards(board_id, tool_input.get("title", ""))
+        if not matches:
+            return f"No card matching '{tool_input.get('title')}' on {cfg['board']}."
+        if len(matches) > 1:
+            top = matches[:5]
+            lines = ["Multiple matches — please be more specific:"]
+            for m in top:
+                lines.append(f"  - {m['name']} ({m['list_name']})")
+            return "\n".join(lines)
+        m = matches[0]
+        move_card(m["id"], dest_id)
+        return f"Moved '{m['name']}' from {m['list_name']} to {dest_canonical}."
+
     # ── Google Calendar tools ─────────────────────────────────────────────────
     elif tool_name == "get_calendar_events":
         from gcal_helper import get_events, format_events

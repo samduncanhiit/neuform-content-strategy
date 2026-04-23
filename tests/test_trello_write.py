@@ -290,3 +290,61 @@ class TestAddTrelloCardHandler(unittest.TestCase):
                 raw_number="+61421188443",
             )
         mock_list.assert_called_with("b1", "Revenue Growth Ideas")
+
+
+class TestMoveTrelloCardHandler(unittest.TestCase):
+    def setUp(self):
+        import app
+        self.app = app
+
+    @patch("trello_helper.move_card")
+    @patch("trello_helper._find_cards")
+    @patch("trello_helper._find_list")
+    @patch("trello_helper._find_board_id")
+    def test_moves_single_match_to_done(self, mock_board, mock_list, mock_find, mock_move):
+        mock_board.return_value = "b1"
+        mock_list.return_value = ("l_done", "Done")
+        mock_find.return_value = [
+            {"id": "c1", "name": "Buy kettlebells", "list_name": "To Do List",
+             "list_id": "l1", "url": "https://trello.com/c/c1", "score": 15},
+        ]
+
+        result = self.app.handle_tool_call(
+            "move_trello_card", {"title": "kettlebell"}, raw_number="+61421188443",
+        )
+        self.assertIn("Moved", result)
+        self.assertIn("Buy kettlebells", result)
+        self.assertIn("Done", result)
+        mock_move.assert_called_with("c1", "l_done")
+
+    @patch("trello_helper._find_cards")
+    @patch("trello_helper._find_list")
+    @patch("trello_helper._find_board_id")
+    def test_multiple_matches_asks_to_clarify(self, mock_board, mock_list, mock_find):
+        mock_board.return_value = "b1"
+        mock_list.return_value = ("l_done", "Done")
+        mock_find.return_value = [
+            {"id": "c1", "name": "Buy kettlebells", "list_name": "To Do List",
+             "list_id": "l1", "url": "", "score": 15},
+            {"id": "c2", "name": "kettlebell rack install", "list_name": "Doing",
+             "list_id": "l2", "url": "", "score": 15},
+        ]
+
+        result = self.app.handle_tool_call(
+            "move_trello_card", {"title": "kettlebell"}, raw_number="+61421188443",
+        )
+        self.assertIn("Buy kettlebells", result)
+        self.assertIn("kettlebell rack install", result)
+        self.assertIn("more specific", result.lower())
+
+    @patch("trello_helper._find_cards")
+    @patch("trello_helper._find_list")
+    @patch("trello_helper._find_board_id")
+    def test_no_match_returns_friendly_message(self, mock_board, mock_list, mock_find):
+        mock_board.return_value = "b1"
+        mock_list.return_value = ("l_done", "Done")
+        mock_find.return_value = []
+        result = self.app.handle_tool_call(
+            "move_trello_card", {"title": "xyz"}, raw_number="+61421188443",
+        )
+        self.assertIn("No card matching", result)

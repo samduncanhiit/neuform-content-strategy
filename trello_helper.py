@@ -78,7 +78,32 @@ def _find_cards(board_id, title):
 
 
 def _fuzzy_score(needle, haystack):
-    raise NotImplementedError
+    """Score how well `needle` matches `haystack`. Higher is better.
+
+    0     = no match
+    >=10  = substring match (+ length-based bonus)
+    1-9   = token-overlap match only
+    """
+    if not needle or not haystack:
+        return 0
+    n = needle.lower().strip()
+    h = haystack.lower().strip()
+
+    if n in h:
+        return 10 + len(n)
+
+    needle_tokens = set(t.strip(".,!?") for t in n.split() if len(t) > 2)
+    haystack_tokens = set(t.strip(".,!?") for t in h.split() if len(t) > 2)
+    if not needle_tokens:
+        return 0
+
+    matches = 0
+    for nt in needle_tokens:
+        for ht in haystack_tokens:
+            if nt == ht or ht.startswith(nt) or nt.startswith(ht):
+                matches += 1
+                break
+    return matches
 
 
 def _resolve_labels(board_id, label_names):

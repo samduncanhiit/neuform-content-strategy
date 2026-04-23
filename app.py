@@ -65,6 +65,15 @@ USER_CALENDAR = {
     ],
 }
 
+# Per-user Trello config. Only users in this dict get Trello write access.
+USER_TRELLO = {
+    "+61421188443": {  # Erin
+        "board": "HIIT Office",
+        "todo_list": "To Do List",
+        "done_list": "Done",
+    },
+}
+
 SYSTEM_PROMPT = (
     "You are an AI assistant for HIIT Station Capalaba helping manage daily operations. "
     "You are helpful, concise, and professional. You assist with scheduling, member queries, "
@@ -479,17 +488,22 @@ _GMAIL_TOOLS = [
 _GMAIL_USERS = set(USER_GMAIL.values())
 
 
-def _get_tools_for_user(user_email):
+_TRELLO_WRITE_TOOLS = []  # populated in a later task
+
+
+def _get_tools_for_user(user_email, raw_number=None):
     """Return only the tools relevant to this user — saves ~500 input tokens for non-Gmail users."""
     tools = _MINDBODY_TOOLS + _CALENDAR_TOOLS + _OUTLOOK_TOOLS
     # Only include Gmail tools for users who actually have a Gmail account
     if user_email and any(user_email == USER_EMAILS.get(phone) for phone in USER_GMAIL):
         tools = tools + _GMAIL_TOOLS
+    if raw_number in USER_TRELLO:
+        tools = tools + _TRELLO_WRITE_TOOLS
     return tools
 
 
 # Keep ALL_TOOLS for handle_tool_call routing (it handles all tools regardless)
-ALL_TOOLS = _MINDBODY_TOOLS + _CALENDAR_TOOLS + _OUTLOOK_TOOLS + _GMAIL_TOOLS
+ALL_TOOLS = _MINDBODY_TOOLS + _CALENDAR_TOOLS + _OUTLOOK_TOOLS + _GMAIL_TOOLS + _TRELLO_WRITE_TOOLS
 
 
 def _get_user_calendar_ids(user_email):
@@ -508,7 +522,7 @@ def _get_user_gmail(user_email):
     return user_email
 
 
-def handle_tool_call(tool_name, tool_input, user_email=None):
+def handle_tool_call(tool_name, tool_input, user_email=None, raw_number=None):
     """Execute a tool call and return the result."""
     # ── MindBody tools ────────────────────────────────────────────────────────
     if tool_name == "get_todays_classes":
@@ -770,7 +784,7 @@ def get_claude_response(user_message, sender=None):
     user_name = USER_NAMES.get(raw_number)
     user_email = USER_EMAILS.get(raw_number, "sam@hiitaustralia.com.au")
     system = _build_system_prompt(user_name, raw_number)
-    tools = _get_tools_for_user(user_email)
+    tools = _get_tools_for_user(user_email, raw_number=raw_number)
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
@@ -798,7 +812,7 @@ def get_claude_response(user_message, sender=None):
             if block.type == "tool_use":
                 logger.info(f"Tool call: {block.name}")
                 try:
-                    result = handle_tool_call(block.name, block.input, user_email=user_email)
+                    result = handle_tool_call(block.name, block.input, user_email=user_email, raw_number=raw_number)
                 except Exception as e:
                     logger.error(f"Tool error ({block.name}): {e}")
                     result = "Sorry, that data is temporarily unavailable."
@@ -1069,13 +1083,13 @@ def cron_leads():
         drafts = process_new_leads(include_read=test_mode)
         summary = format_lead_summary(drafts)
 
-        # Notify Sam on WhatsApp with the results
+        # Notify Erin on WhatsApp with the results
         if drafts:
             try:
-                sam_whatsapp = "whatsapp:+61420233508"
-                send_whatsapp_reply(sam_whatsapp, summary)
+                erin_whatsapp = "whatsapp:+61421188443"
+                send_whatsapp_reply(erin_whatsapp, summary)
             except Exception as e:
-                logger.error(f"Failed to send lead notification to Sam: {e}")
+                logger.error(f"Failed to send lead notification to Erin: {e}")
 
         logger.info(f"Lead automation complete: {len(drafts)} drafts created")
         return summary, 200
@@ -1292,13 +1306,13 @@ def _run_daily_leads():
             drafts = process_new_leads()
             summary = format_lead_summary(drafts)
 
-            # Notify Sam on WhatsApp
+            # Notify Erin on WhatsApp
             try:
-                sam_whatsapp = "whatsapp:+61420233508"
-                send_whatsapp_reply(sam_whatsapp, summary)
-                logger.info(f"Lead scheduler: {len(drafts)} drafts created, Sam notified")
+                erin_whatsapp = "whatsapp:+61421188443"
+                send_whatsapp_reply(erin_whatsapp, summary)
+                logger.info(f"Lead scheduler: {len(drafts)} drafts created, Erin notified")
             except Exception as e:
-                logger.error(f"Lead scheduler: failed to notify Sam: {e}")
+                logger.error(f"Lead scheduler: failed to notify Erin: {e}")
 
         except Exception as e:
             logger.error(f"Lead scheduler error: {e}")

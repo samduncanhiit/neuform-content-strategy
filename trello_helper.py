@@ -20,6 +20,9 @@ TRELLO_TOKEN = os.environ.get("TRELLO_TOKEN")
 
 # Cache for board ID lookup
 _board_id_cache = None
+_board_id_cache_by_name = {}
+_list_cache_by_board = {}  # board_id -> (timestamp, [list dicts])
+_LIST_CACHE_TTL_SEC = 600  # 10 minutes
 
 
 def _now():
@@ -66,11 +69,44 @@ def _trello_put(path, params=None, json_body=None):
 
 
 def _find_board_id(board_name):
-    raise NotImplementedError
+    """Look up a board ID by case-insensitive name. Cached per-name forever."""
+    if not board_name:
+        return None
+    key = board_name.lower().strip()
+    if key in _board_id_cache_by_name:
+        return _board_id_cache_by_name[key]
+
+    boards = _trello_get("members/me/boards", {"fields": "name,id"})
+    for board in boards:
+        if (board.get("name") or "").lower().strip() == key:
+            _board_id_cache_by_name[key] = board["id"]
+            return board["id"]
+    return None
 
 
 def _find_list(board_id, list_name):
-    raise NotImplementedError
+    """Find a list on a board by exact (case-insensitive) name.
+
+    Returns (list_id, canonical_name) or None.
+    Lists are cached per board for _LIST_CACHE_TTL_SEC seconds.
+    """
+    if not board_id or not list_name:
+        return None
+
+    import time
+    now = time.time()
+    cached = _list_cache_by_board.get(board_id)
+    if cached and (now - cached[0]) < _LIST_CACHE_TTL_SEC:
+        lists = cached[1]
+    else:
+        lists = _trello_get(f"boards/{board_id}/lists", {"fields": "name,id"})
+        _list_cache_by_board[board_id] = (now, lists)
+
+    key = list_name.lower().strip()
+    for lst in lists:
+        if (lst.get("name") or "").lower().strip() == key:
+            return (lst["id"], lst["name"])
+    return None
 
 
 def _find_cards(board_id, title):

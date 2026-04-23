@@ -794,6 +794,39 @@ def handle_tool_call(tool_name, tool_input, user_email=None, raw_number=None):
         move_card(m["id"], dest_id)
         return f"Moved '{m['name']}' from {m['list_name']} to {dest_canonical}."
 
+    elif tool_name == "edit_trello_card":
+        from trello_helper import _find_board_id, _find_cards, _resolve_labels, update_card
+        cfg = USER_TRELLO.get(raw_number)
+        if not cfg:
+            return "Trello write access is not configured for you."
+        board_id = _find_board_id(cfg["board"])
+        if not board_id:
+            return f"Could not find Trello board '{cfg['board']}'."
+        matches = _find_cards(board_id, tool_input.get("title", ""))
+        if not matches:
+            return f"No card matching '{tool_input.get('title')}' on {cfg['board']}."
+        if len(matches) > 1:
+            top = matches[:5]
+            lines = ["Multiple matches — please be more specific:"]
+            for m in top:
+                lines.append(f"  - {m['name']} ({m['list_name']})")
+            return "\n".join(lines)
+        m = matches[0]
+
+        label_names = tool_input.get("labels")
+        label_ids = None
+        if label_names is not None:
+            label_ids = _resolve_labels(board_id, label_names)
+
+        update_card(
+            m["id"],
+            name=tool_input.get("new_title"),
+            due_date=tool_input.get("due_date"),
+            description=tool_input.get("description"),
+            label_ids=label_ids,
+        )
+        return f"Updated '{m['name']}'."
+
     # ── Google Calendar tools ─────────────────────────────────────────────────
     elif tool_name == "get_calendar_events":
         from gcal_helper import get_events, format_events

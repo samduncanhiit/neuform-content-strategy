@@ -348,3 +348,62 @@ class TestMoveTrelloCardHandler(unittest.TestCase):
             "move_trello_card", {"title": "xyz"}, raw_number="+61421188443",
         )
         self.assertIn("No card matching", result)
+
+
+class TestEditTrelloCardHandler(unittest.TestCase):
+    def setUp(self):
+        import app
+        self.app = app
+
+    @patch("trello_helper.update_card")
+    @patch("trello_helper._resolve_labels")
+    @patch("trello_helper._find_cards")
+    @patch("trello_helper._find_board_id")
+    def test_updates_single_match(self, mock_board, mock_find, mock_labels, mock_update):
+        mock_board.return_value = "b1"
+        mock_find.return_value = [
+            {"id": "c1", "name": "Buy kettlebells", "list_name": "To Do List",
+             "list_id": "l1", "url": "", "score": 15},
+        ]
+        mock_labels.return_value = []
+
+        result = self.app.handle_tool_call(
+            "edit_trello_card",
+            {"title": "kettlebell", "new_title": "Buy heavier kettlebells",
+             "due_date": "2026-05-01"},
+            raw_number="+61421188443",
+        )
+        self.assertIn("Updated", result)
+        args, kwargs = mock_update.call_args
+        self.assertEqual(args[0], "c1")
+        self.assertEqual(kwargs["name"], "Buy heavier kettlebells")
+        self.assertEqual(kwargs["due_date"], "2026-05-01")
+
+    @patch("trello_helper._find_cards")
+    @patch("trello_helper._find_board_id")
+    def test_multiple_matches_asks_to_clarify(self, mock_board, mock_find):
+        mock_board.return_value = "b1"
+        mock_find.return_value = [
+            {"id": "c1", "name": "Buy kettlebells", "list_name": "To Do List",
+             "list_id": "l1", "url": "", "score": 15},
+            {"id": "c2", "name": "kettlebell rack install", "list_name": "Doing",
+             "list_id": "l2", "url": "", "score": 15},
+        ]
+        result = self.app.handle_tool_call(
+            "edit_trello_card",
+            {"title": "kettlebell", "new_title": "renamed"},
+            raw_number="+61421188443",
+        )
+        self.assertIn("more specific", result.lower())
+
+    @patch("trello_helper._find_cards")
+    @patch("trello_helper._find_board_id")
+    def test_no_match(self, mock_board, mock_find):
+        mock_board.return_value = "b1"
+        mock_find.return_value = []
+        result = self.app.handle_tool_call(
+            "edit_trello_card",
+            {"title": "abc", "new_title": "def"},
+            raw_number="+61421188443",
+        )
+        self.assertIn("No card matching", result)

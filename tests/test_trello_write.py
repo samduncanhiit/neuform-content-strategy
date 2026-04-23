@@ -104,3 +104,35 @@ class TestFindList(unittest.TestCase):
     def test_returns_none_when_no_match(self, mock_get):
         mock_get.return_value = [{"id": "l1", "name": "Done"}]
         self.assertIsNone(trello_helper._find_list("board1", "Nonexistent"))
+
+
+class TestFindCards(unittest.TestCase):
+    @patch("trello_helper._trello_get")
+    def test_returns_sorted_matches(self, mock_get):
+        mock_get.side_effect = [
+            [
+                {"id": "c1", "name": "Buy kettlebells", "idList": "l1",
+                 "shortUrl": "https://trello.com/c/c1"},
+                {"id": "c2", "name": "Order dumbbells", "idList": "l1",
+                 "shortUrl": "https://trello.com/c/c2"},
+                {"id": "c3", "name": "kettlebell rack install", "idList": "l2",
+                 "shortUrl": "https://trello.com/c/c3"},
+            ],
+            [
+                {"id": "l1", "name": "To Do List"},
+                {"id": "l2", "name": "Doing"},
+            ],
+        ]
+        matches = trello_helper._find_cards("board1", "kettlebell")
+        self.assertEqual(len(matches), 2)
+        self.assertEqual(matches[0]["name"], "Buy kettlebells")
+        self.assertEqual(matches[0]["list_name"], "To Do List")
+        self.assertEqual(matches[0]["url"], "https://trello.com/c/c1")
+
+    @patch("trello_helper._trello_get")
+    def test_no_matches_returns_empty(self, mock_get):
+        mock_get.side_effect = [
+            [{"id": "c1", "name": "Pay power bill", "idList": "l1", "shortUrl": ""}],
+            [{"id": "l1", "name": "Bills"}],
+        ]
+        self.assertEqual(trello_helper._find_cards("board1", "kettlebell"), [])

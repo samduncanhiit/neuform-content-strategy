@@ -110,7 +110,35 @@ def _find_list(board_id, list_name):
 
 
 def _find_cards(board_id, title):
-    raise NotImplementedError
+    """Find cards on a board by fuzzy title match.
+
+    Returns a list of dicts (highest-score first):
+        [{"id": ..., "name": ..., "list_id": ..., "list_name": ..., "url": ..., "score": ...}]
+    """
+    if not board_id or not title:
+        return []
+
+    cards = _trello_get(
+        f"boards/{board_id}/cards",
+        {"fields": "name,idList,shortUrl", "filter": "open"},
+    )
+    lists = _trello_get(f"boards/{board_id}/lists", {"fields": "name,id"})
+    list_name_by_id = {lst["id"]: lst["name"] for lst in lists}
+
+    results = []
+    for c in cards:
+        score = _fuzzy_score(title, c.get("name") or "")
+        if score > 0:
+            results.append({
+                "id": c["id"],
+                "name": c.get("name") or "",
+                "list_id": c.get("idList"),
+                "list_name": list_name_by_id.get(c.get("idList"), "Unknown"),
+                "url": c.get("shortUrl") or "",
+                "score": score,
+            })
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results
 
 
 def _fuzzy_score(needle, haystack):

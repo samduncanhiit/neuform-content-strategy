@@ -238,3 +238,55 @@ class TestCardWriteWrappers(unittest.TestCase):
         args, kwargs = mock_put.call_args
         self.assertEqual(args[0], "cards/c1")
         self.assertEqual(kwargs.get("params", {}), {"closed": "true"})
+
+
+class TestAddTrelloCardHandler(unittest.TestCase):
+    def setUp(self):
+        import app
+        self.app = app
+
+    @patch("trello_helper.create_card")
+    @patch("trello_helper._resolve_labels")
+    @patch("trello_helper._find_list")
+    @patch("trello_helper._find_board_id")
+    def test_adds_card_with_defaults(self, mock_board, mock_list, mock_labels, mock_create):
+        mock_board.return_value = "b1"
+        mock_list.return_value = ("l1", "To Do List")
+        mock_labels.return_value = []
+        mock_create.return_value = {"id": "c1", "shortUrl": "https://trello.com/c/c1"}
+
+        result = self.app.handle_tool_call(
+            "add_trello_card",
+            {"title": "Buy kettlebells"},
+            raw_number="+61421188443",
+        )
+        self.assertIn("Buy kettlebells", result)
+        self.assertIn("To Do List", result)
+        self.assertIn("HIIT Office", result)
+        mock_list.assert_called_with("b1", "To Do List")
+        mock_create.assert_called_once()
+
+    @patch("trello_helper._find_board_id")
+    def test_refuses_unconfigured_user(self, mock_board):
+        result = self.app.handle_tool_call(
+            "add_trello_card",
+            {"title": "X"},
+            raw_number="+61400000000",
+        )
+        self.assertIn("not configured", result.lower())
+        mock_board.assert_not_called()
+
+    @patch("trello_helper._find_list")
+    @patch("trello_helper._find_board_id")
+    def test_uses_list_name_override(self, mock_board, mock_list):
+        mock_board.return_value = "b1"
+        mock_list.return_value = ("l9", "Revenue Growth Ideas")
+        with patch("trello_helper.create_card") as mock_create, \
+             patch("trello_helper._resolve_labels", return_value=[]):
+            mock_create.return_value = {"id": "c1", "shortUrl": ""}
+            self.app.handle_tool_call(
+                "add_trello_card",
+                {"title": "X", "list_name": "Revenue Growth Ideas"},
+                raw_number="+61421188443",
+            )
+        mock_list.assert_called_with("b1", "Revenue Growth Ideas")

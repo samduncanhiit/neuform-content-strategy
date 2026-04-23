@@ -740,6 +740,34 @@ def handle_tool_call(tool_name, tool_input, user_email=None, raw_number=None):
         tasks = get_trello_tasks()
         return format_trello_tasks(tasks)
 
+    elif tool_name == "add_trello_card":
+        from trello_helper import _find_board_id, _find_list, _resolve_labels, create_card
+        cfg = USER_TRELLO.get(raw_number)
+        if not cfg:
+            return "Trello write access is not configured for you."
+        board_id = _find_board_id(cfg["board"])
+        if not board_id:
+            return f"Could not find Trello board '{cfg['board']}'."
+        list_name = tool_input.get("list_name") or cfg["todo_list"]
+        list_result = _find_list(board_id, list_name)
+        if not list_result:
+            return f"No list matching '{list_name}' on {cfg['board']}."
+        list_id, canonical_list_name = list_result
+        label_ids = _resolve_labels(board_id, tool_input.get("labels") or [])
+        card = create_card(
+            board_id=board_id,
+            list_id=list_id,
+            title=tool_input["title"],
+            due_date=tool_input.get("due_date"),
+            description=tool_input.get("description"),
+            label_ids=label_ids,
+        )
+        url = card.get("shortUrl", "")
+        msg = f"Added '{tool_input['title']}' to {canonical_list_name} on {cfg['board']}."
+        if url:
+            msg += f"\n{url}"
+        return msg
+
     # ── Google Calendar tools ─────────────────────────────────────────────────
     elif tool_name == "get_calendar_events":
         from gcal_helper import get_events, format_events

@@ -488,7 +488,93 @@ _GMAIL_TOOLS = [
 _GMAIL_USERS = set(USER_GMAIL.values())
 
 
-_TRELLO_WRITE_TOOLS = []  # populated in a later task
+_TRELLO_WRITE_TOOLS = [
+    {
+        "name": "add_trello_card",
+        "description": (
+            "Add a new card to the user's Trello board. Defaults to the user's To Do list "
+            "unless list_name is specified. Use this when the user says 'add a task', "
+            "'add to my to do list', 'create a card', etc."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Card title"},
+                "due_date": {"type": "string", "description": "YYYY-MM-DD, optional"},
+                "description": {"type": "string", "description": "Free text, optional"},
+                "labels": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Label names, optional. Created on the board if missing.",
+                },
+                "list_name": {
+                    "type": "string",
+                    "description": "Override list name. Defaults to the user's todo_list.",
+                },
+            },
+            "required": ["title"],
+        },
+    },
+    {
+        "name": "edit_trello_card",
+        "description": (
+            "Edit an existing Trello card by fuzzy title match on the user's board. "
+            "Provide the current title (or a distinctive fragment) plus any fields to change. "
+            "If multiple cards match, the tool returns the matches and asks the user to be more specific."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Current card title (fuzzy match)"},
+                "new_title": {"type": "string", "description": "Rename the card"},
+                "due_date": {"type": "string", "description": "YYYY-MM-DD"},
+                "description": {"type": "string"},
+                "labels": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Replaces the card's labels with this list.",
+                },
+            },
+            "required": ["title"],
+        },
+    },
+    {
+        "name": "move_trello_card",
+        "description": (
+            "Move a card to another list. Defaults to the user's Done list — use this "
+            "when the user says 'I've completed X', 'I've done X', 'tick off X', or 'mark X done'. "
+            "Do NOT use remove_trello_card for completion — use this."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Card title to find (fuzzy)"},
+                "list_name": {
+                    "type": "string",
+                    "description": "Override destination list. Defaults to the user's done_list.",
+                },
+            },
+            "required": ["title"],
+        },
+    },
+    {
+        "name": "remove_trello_card",
+        "description": (
+            "Archive (delete) a Trello card. Two-step flow: call first WITHOUT confirmed=true to "
+            "preview the card; then only call again with confirmed=true after the user has replied "
+            "'yes' (or similar) to the preview. NEVER call with confirmed=true on the first attempt. "
+            "Use only when the user explicitly says delete/archive/remove — NOT for 'completed' or 'done'."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Card title to find (fuzzy)"},
+                "confirmed": {"type": "boolean", "description": "Must be true on the second call after user confirms"},
+            },
+            "required": ["title"],
+        },
+    },
+]
 
 
 def _get_tools_for_user(user_email, raw_number=None):

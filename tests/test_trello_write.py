@@ -136,3 +136,35 @@ class TestFindCards(unittest.TestCase):
             [{"id": "l1", "name": "Bills"}],
         ]
         self.assertEqual(trello_helper._find_cards("board1", "kettlebell"), [])
+
+
+class TestResolveLabels(unittest.TestCase):
+    @patch("trello_helper._trello_post")
+    @patch("trello_helper._trello_get")
+    def test_returns_existing_label_ids_and_creates_missing(self, mock_get, mock_post):
+        mock_get.return_value = [
+            {"id": "lab1", "name": "Urgent"},
+            {"id": "lab2", "name": "Admin"},
+        ]
+        mock_post.return_value = {"id": "lab3", "name": "New"}
+
+        ids = trello_helper._resolve_labels("board1", ["Urgent", "New"])
+
+        self.assertEqual(ids, ["lab1", "lab3"])
+        mock_post.assert_called_once()
+        args, kwargs = mock_post.call_args
+        self.assertEqual(args[0], "boards/board1/labels")
+        self.assertEqual(kwargs.get("params", {}).get("name"), "New")
+
+    @patch("trello_helper._trello_get")
+    def test_empty_list_returns_empty(self, mock_get):
+        self.assertEqual(trello_helper._resolve_labels("board1", []), [])
+        mock_get.assert_not_called()
+
+    @patch("trello_helper._trello_post")
+    @patch("trello_helper._trello_get")
+    def test_case_insensitive_match(self, mock_get, mock_post):
+        mock_get.return_value = [{"id": "lab1", "name": "Urgent"}]
+        ids = trello_helper._resolve_labels("board1", ["urgent"])
+        self.assertEqual(ids, ["lab1"])
+        mock_post.assert_not_called()

@@ -171,7 +171,29 @@ def _fuzzy_score(needle, haystack):
 
 
 def _resolve_labels(board_id, label_names):
-    raise NotImplementedError
+    """Turn a list of label names into label IDs. Creates missing labels on the board.
+
+    Label matching is case-insensitive.
+    """
+    if not label_names:
+        return []
+
+    existing = _trello_get(f"boards/{board_id}/labels", {"fields": "name,id"})
+    by_lower = {(l.get("name") or "").lower().strip(): l["id"] for l in existing}
+
+    ids = []
+    for name in label_names:
+        key = name.lower().strip()
+        if key in by_lower:
+            ids.append(by_lower[key])
+        else:
+            created = _trello_post(
+                f"boards/{board_id}/labels",
+                params={"name": name, "color": ""},
+            )
+            ids.append(created["id"])
+            by_lower[key] = created["id"]
+    return ids
 
 
 def create_card(board_id, list_id, title, due_date=None, description=None, label_ids=None):

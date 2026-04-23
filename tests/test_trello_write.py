@@ -168,3 +168,73 @@ class TestResolveLabels(unittest.TestCase):
         ids = trello_helper._resolve_labels("board1", ["urgent"])
         self.assertEqual(ids, ["lab1"])
         mock_post.assert_not_called()
+
+
+class TestCardWriteWrappers(unittest.TestCase):
+    @patch("trello_helper._trello_post")
+    def test_create_card_sends_required_fields(self, mock_post):
+        mock_post.return_value = {"id": "c1", "shortUrl": "https://trello.com/c/c1"}
+        result = trello_helper.create_card(
+            board_id="b1", list_id="l1", title="Buy kettlebells",
+            due_date="2026-04-25", description="From supplier X",
+            label_ids=["lab1", "lab2"],
+        )
+        self.assertEqual(result["id"], "c1")
+        args, kwargs = mock_post.call_args
+        self.assertEqual(args[0], "cards")
+        params = kwargs.get("params", {})
+        self.assertEqual(params["idList"], "l1")
+        self.assertEqual(params["name"], "Buy kettlebells")
+        self.assertEqual(params["due"], "2026-04-25T10:00:00.000Z")
+        self.assertEqual(params["desc"], "From supplier X")
+        self.assertEqual(params["idLabels"], "lab1,lab2")
+
+    @patch("trello_helper._trello_post")
+    def test_create_card_without_optional_fields(self, mock_post):
+        mock_post.return_value = {"id": "c1", "shortUrl": ""}
+        trello_helper.create_card(board_id="b1", list_id="l1", title="t")
+        args, kwargs = mock_post.call_args
+        params = kwargs.get("params", {})
+        self.assertEqual(params["name"], "t")
+        self.assertNotIn("due", params)
+        self.assertNotIn("desc", params)
+        self.assertNotIn("idLabels", params)
+
+    @patch("trello_helper._trello_put")
+    def test_update_card_passes_through_fields(self, mock_put):
+        mock_put.return_value = {"id": "c1"}
+        trello_helper.update_card(
+            "c1", name="New title", due_date="2026-05-01",
+            description="New desc", label_ids=["lab1"],
+        )
+        args, kwargs = mock_put.call_args
+        self.assertEqual(args[0], "cards/c1")
+        params = kwargs.get("params", {})
+        self.assertEqual(params["name"], "New title")
+        self.assertEqual(params["due"], "2026-05-01T10:00:00.000Z")
+        self.assertEqual(params["desc"], "New desc")
+        self.assertEqual(params["idLabels"], "lab1")
+
+    @patch("trello_helper._trello_put")
+    def test_update_card_skips_none_fields(self, mock_put):
+        mock_put.return_value = {"id": "c1"}
+        trello_helper.update_card("c1", name="Only title")
+        args, kwargs = mock_put.call_args
+        params = kwargs.get("params", {})
+        self.assertEqual(list(params.keys()), ["name"])
+
+    @patch("trello_helper._trello_put")
+    def test_move_card_sends_idList(self, mock_put):
+        mock_put.return_value = {"id": "c1"}
+        trello_helper.move_card("c1", "l2")
+        args, kwargs = mock_put.call_args
+        self.assertEqual(args[0], "cards/c1")
+        self.assertEqual(kwargs.get("params", {}), {"idList": "l2"})
+
+    @patch("trello_helper._trello_put")
+    def test_archive_card_sets_closed_true(self, mock_put):
+        mock_put.return_value = {"id": "c1"}
+        trello_helper.archive_card("c1")
+        args, kwargs = mock_put.call_args
+        self.assertEqual(args[0], "cards/c1")
+        self.assertEqual(kwargs.get("params", {}), {"closed": "true"})

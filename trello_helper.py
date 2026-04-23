@@ -196,20 +196,49 @@ def _resolve_labels(board_id, label_names):
     return ids
 
 
+def _format_due(due_date):
+    """Convert YYYY-MM-DD to the ISO 8601 Trello expects.
+
+    10:00 AEST (midnight UTC) keeps the due date visually on the intended day.
+    """
+    if not due_date:
+        return None
+    return f"{due_date}T10:00:00.000Z"
+
+
 def create_card(board_id, list_id, title, due_date=None, description=None, label_ids=None):
-    raise NotImplementedError
+    params = {"idList": list_id, "name": title}
+    due = _format_due(due_date)
+    if due:
+        params["due"] = due
+    if description:
+        params["desc"] = description
+    if label_ids:
+        params["idLabels"] = ",".join(label_ids)
+    return _trello_post("cards", params=params)
 
 
-def update_card(card_id, **fields):
-    raise NotImplementedError
+def update_card(card_id, name=None, due_date=None, description=None, label_ids=None):
+    params = {}
+    if name is not None:
+        params["name"] = name
+    if due_date is not None:
+        params["due"] = _format_due(due_date)
+    if description is not None:
+        params["desc"] = description
+    if label_ids is not None:
+        params["idLabels"] = ",".join(label_ids)
+    if not params:
+        return None
+    return _trello_put(f"cards/{card_id}", params=params)
 
 
 def move_card(card_id, dest_list_id):
-    raise NotImplementedError
+    return _trello_put(f"cards/{card_id}", params={"idList": dest_list_id})
 
 
 def archive_card(card_id):
-    raise NotImplementedError
+    return _trello_put(f"cards/{card_id}", params={"closed": "true"})
 
 
 def _find_hiit_challenge_board():

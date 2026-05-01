@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 JOTFORM_BASE = "https://api.jotform.com"
 JOTFORM_API_KEY = os.environ.get("JOTFORM_API_KEY")
+MIN_SUGGESTION_SCORE = 1
 
 
 def _api_get(path, params=None):
@@ -76,6 +77,28 @@ def _fuzzy_score(needle, haystack):
                 matches += 1
                 break
     return matches
+
+
+def _suggest_form(name):
+    """Return the single highest-scoring non-DELETED form, or None if no form scores >= MIN_SUGGESTION_SCORE."""
+    needle = (name or "").strip()
+    if not needle:
+        return None
+
+    forms = _api_get("/user/forms", {"limit": 1000})
+    active = [f for f in forms if f.get("status") != "DELETED"]
+
+    best_form = None
+    best_score = 0
+    for f in active:
+        score = _fuzzy_score(needle, f.get("title", ""))
+        if score > best_score:
+            best_score = score
+            best_form = f
+
+    if best_score >= MIN_SUGGESTION_SCORE:
+        return best_form
+    return None
 
 
 def get_submission_count(name):

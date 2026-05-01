@@ -210,3 +210,64 @@ class TestFuzzyScore(unittest.TestCase):
             jotform_helper._fuzzy_score("kettlebell", "labour day breakfast"),
             0,
         )
+
+
+class TestSuggestForm(unittest.TestCase):
+    @patch("jotform_helper._api_get")
+    def test_returns_highest_scoring_form(self, mock_get):
+        mock_get.return_value = [
+            _form("1", "Lower Body Strength Session", 40),
+            _form("2", "Upper Body Hypertrophy", 12),
+            _form("3", "Cardio Bootcamp", 5),
+        ]
+        # "lower body strength" is a substring of form 1's title — score 10+
+        result = jotform_helper._suggest_form("lower body strength")
+        self.assertIsNotNone(result)
+        self.assertEqual(result["id"], "1")
+
+    @patch("jotform_helper._api_get")
+    def test_returns_token_match_when_no_substring(self, mock_get):
+        mock_get.return_value = [
+            _form("1", "8 Week Challenge Round 14", 36),
+            _form("2", "Cardio Bootcamp", 5),
+        ]
+        # "challenge week" isn't a substring of either title (form 1 has "Week Challenge"
+        # in that order), but tokens "challenge" and "week" both match form 1 → token-only
+        # score = 2. Form 2 shares no tokens → score = 0. Form 1 wins.
+        result = jotform_helper._suggest_form("challenge week")
+        self.assertIsNotNone(result)
+        self.assertEqual(result["id"], "1")
+
+    @patch("jotform_helper._api_get")
+    def test_returns_none_when_no_form_scores_above_threshold(self, mock_get):
+        mock_get.return_value = [
+            _form("1", "Cardio Bootcamp", 5),
+            _form("2", "End of Challenge Party", 0),
+        ]
+        # "kettlebell" shares no tokens with either title → all score 0
+        result = jotform_helper._suggest_form("kettlebell")
+        self.assertIsNone(result)
+
+    @patch("jotform_helper._api_get")
+    def test_filters_out_deleted_forms(self, mock_get):
+        mock_get.return_value = [
+            _form("1", "Lower Body Strength", 40, status="DELETED"),
+            _form("2", "Cardio Bootcamp", 5),
+        ]
+        # The deleted form would be the closest match for "lower body" but should be skipped.
+        result = jotform_helper._suggest_form("lower body")
+        # Cardio Bootcamp scores 0 against "lower body", so we expect None.
+        self.assertIsNone(result)
+
+    @patch("jotform_helper._api_get")
+    def test_empty_name_returns_none(self, mock_get):
+        # No API call needed for empty input.
+        result = jotform_helper._suggest_form("")
+        self.assertIsNone(result)
+        mock_get.assert_not_called()
+
+    @patch("jotform_helper._api_get")
+    def test_whitespace_only_name_returns_none(self, mock_get):
+        result = jotform_helper._suggest_form("   ")
+        self.assertIsNone(result)
+        mock_get.assert_not_called()

@@ -585,9 +585,32 @@ _TRELLO_WRITE_TOOLS = [
 ]
 
 
+_JOTFORM_TOOLS = [
+    {
+        "name": "get_jotform_submissions",
+        "description": (
+            "Get the total submission count for a JotForm form, looked up by form name. "
+            "Use this when the user asks 'how many submissions for X', 'submission count', "
+            "or similar. Matches form name case-insensitively. If multiple forms match, "
+            "the bot will list them so the user can pick."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "form_name": {
+                    "type": "string",
+                    "description": "Name (or partial name) of the JotForm form.",
+                },
+            },
+            "required": ["form_name"],
+        },
+    },
+]
+
+
 def _get_tools_for_user(user_email, raw_number=None):
     """Return only the tools relevant to this user — saves ~500 input tokens for non-Gmail users."""
-    tools = _MINDBODY_TOOLS + _CALENDAR_TOOLS + _OUTLOOK_TOOLS
+    tools = _MINDBODY_TOOLS + _CALENDAR_TOOLS + _OUTLOOK_TOOLS + _JOTFORM_TOOLS
     # Only include Gmail tools for users who actually have a Gmail account
     if user_email and any(user_email == USER_EMAILS.get(phone) for phone in USER_GMAIL):
         tools = tools + _GMAIL_TOOLS
@@ -597,7 +620,7 @@ def _get_tools_for_user(user_email, raw_number=None):
 
 
 # Keep ALL_TOOLS for handle_tool_call routing (it handles all tools regardless)
-ALL_TOOLS = _MINDBODY_TOOLS + _CALENDAR_TOOLS + _OUTLOOK_TOOLS + _GMAIL_TOOLS + _TRELLO_WRITE_TOOLS
+ALL_TOOLS = _MINDBODY_TOOLS + _CALENDAR_TOOLS + _OUTLOOK_TOOLS + _GMAIL_TOOLS + _TRELLO_WRITE_TOOLS + _JOTFORM_TOOLS
 
 
 def _get_user_calendar_ids(user_email):
@@ -860,6 +883,21 @@ def handle_tool_call(tool_name, tool_input, user_email=None, raw_number=None):
             )
         archive_card(m["id"])
         return f"Archived '{m['name']}'."
+
+    elif tool_name == "get_jotform_submissions":
+        from jotform_helper import get_submission_count
+        result = get_submission_count(tool_input.get("form_name", ""))
+        if result["status"] == "ok":
+            return f"*{result['title']}*: {result['count']} submissions"
+        elif result["status"] == "none":
+            return f"No JotForm form found matching '{result['name']}'."
+        elif result["status"] == "multiple":
+            lines = ["Multiple forms match — which one?"]
+            for m in result["matches"]:
+                lines.append(f"• {m['title']} ({m['count']} submissions)")
+            return "\n".join(lines)
+        else:  # error
+            return result["message"]
 
     # ── Google Calendar tools ─────────────────────────────────────────────────
     elif tool_name == "get_calendar_events":

@@ -895,6 +895,12 @@ def handle_tool_call(tool_name, tool_input, user_email=None, raw_number=None):
             return f"*{result['title']}*: {result['count']} submissions"
         elif result["status"] == "none":
             return f"No JotForm form found matching '{result['name']}'."
+        elif result["status"] == "suggest":
+            s = result["suggestion"]
+            return (
+                f"No exact match for '{result['name']}'. "
+                f"Did you mean *{s['title']}*? ({s['count']} submissions)"
+            )
         elif result["status"] == "multiple":
             lines = ["Multiple forms match — which one?"]
             for m in result["matches"]:

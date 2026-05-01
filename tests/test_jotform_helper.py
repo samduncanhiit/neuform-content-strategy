@@ -120,9 +120,11 @@ class TestGetSubmissionCount(unittest.TestCase):
             "count": 42,
         })
 
+    @patch("jotform_helper._suggest_form")
     @patch("jotform_helper._find_forms_by_name")
-    def test_no_match_returns_none_status(self, mock_find):
+    def test_no_match_returns_none_status(self, mock_find, mock_suggest):
         mock_find.return_value = []
+        mock_suggest.return_value = None
         result = jotform_helper.get_submission_count("nope")
         self.assertEqual(result, {"status": "none", "name": "nope"})
 
@@ -170,6 +172,38 @@ class TestGetSubmissionCount(unittest.TestCase):
         mock_find.return_value = [_form("1", "Lead Form", "99")]
         result = jotform_helper.get_submission_count("lead form")
         self.assertEqual(result["count"], 99)
+
+    @patch("jotform_helper._suggest_form")
+    @patch("jotform_helper._find_forms_by_name")
+    def test_no_match_with_suggestion_returns_suggest(self, mock_find, mock_suggest):
+        mock_find.return_value = []
+        mock_suggest.return_value = _form("1", "Labour day Lower body Strength session", 40)
+        result = jotform_helper.get_submission_count("lower body")
+        self.assertEqual(result, {
+            "status": "suggest",
+            "name": "lower body",
+            "suggestion": {
+                "title": "Labour day Lower body Strength session",
+                "count": 40,
+            },
+        })
+
+    @patch("jotform_helper._suggest_form")
+    @patch("jotform_helper._find_forms_by_name")
+    def test_no_match_no_suggestion_returns_none(self, mock_find, mock_suggest):
+        mock_find.return_value = []
+        mock_suggest.return_value = None
+        result = jotform_helper.get_submission_count("kettlebell")
+        self.assertEqual(result, {"status": "none", "name": "kettlebell"})
+
+    @patch("jotform_helper._suggest_form")
+    @patch("jotform_helper._find_forms_by_name")
+    def test_suggestion_count_is_coerced_to_int(self, mock_find, mock_suggest):
+        mock_find.return_value = []
+        # JotForm returns count as a string; suggestion count should also be coerced.
+        mock_suggest.return_value = _form("1", "Lead Form", "99")
+        result = jotform_helper.get_submission_count("lead")
+        self.assertEqual(result["suggestion"]["count"], 99)
 
 
 class TestFuzzyScore(unittest.TestCase):

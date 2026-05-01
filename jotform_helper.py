@@ -137,6 +137,16 @@ def get_submission_count(name):
         }
 
     if not matches:
+        suggestion = _suggest_form(name)
+        if suggestion:
+            return {
+                "status": "suggest",
+                "name": name,
+                "suggestion": {
+                    "title": suggestion.get("title", ""),
+                    "count": int(suggestion.get("count", 0) or 0),
+                },
+            }
         return {"status": "none", "name": name}
 
     if len(matches) == 1:

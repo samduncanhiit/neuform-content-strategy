@@ -886,7 +886,7 @@ def handle_tool_call(tool_name, tool_input, user_email=None, raw_number=None):
 
     elif tool_name == "get_jotform_submissions":
         from jotform_helper import get_submission_count
-        result = get_submission_count(tool_input.get("form_name", ""))
+        result = get_submission_count(tool_input["form_name"])
         if result["status"] == "ok":
             return f"*{result['title']}*: {result['count']} submissions"
         elif result["status"] == "none":

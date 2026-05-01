@@ -205,6 +205,17 @@ class TestGetSubmissionCount(unittest.TestCase):
         result = jotform_helper.get_submission_count("lead")
         self.assertEqual(result["suggestion"]["count"], 99)
 
+    @patch("jotform_helper._suggest_form")
+    @patch("jotform_helper._find_forms_by_name")
+    def test_suggest_form_runtime_error_returns_error(self, mock_find, mock_suggest):
+        # If _suggest_form raises (e.g. missing API key on its own _api_get call),
+        # the existing exception handlers should catch it and return an error dict.
+        mock_find.return_value = []
+        mock_suggest.side_effect = RuntimeError("JOTFORM_API_KEY env var is not set")
+        result = jotform_helper.get_submission_count("anything")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("not configured", result["message"].lower())
+
 
 class TestFuzzyScore(unittest.TestCase):
     def test_exact_match_is_highest(self):

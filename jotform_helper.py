@@ -109,10 +109,40 @@ def get_submission_count(name):
       {"status": "ok", "title": str, "count": int}
       {"status": "none", "name": str}
       {"status": "multiple", "matches": [{"title": str, "count": int}, ...]}
+      {"status": "suggest", "name": str, "suggestion": {"title": str, "count": int}}
       {"status": "error", "message": str}
     """
     try:
         matches = _find_forms_by_name(name)
+
+        if not matches:
+            suggestion = _suggest_form(name)
+            if suggestion:
+                return {
+                    "status": "suggest",
+                    "name": name,
+                    "suggestion": {
+                        "title": suggestion.get("title", ""),
+                        "count": int(suggestion.get("count", 0) or 0),
+                    },
+                }
+            return {"status": "none", "name": name}
+
+        if len(matches) == 1:
+            f = matches[0]
+            return {
+                "status": "ok",
+                "title": f.get("title", ""),
+                "count": int(f.get("count", 0) or 0),
+            }
+
+        return {
+            "status": "multiple",
+            "matches": [
+                {"title": f.get("title", ""), "count": int(f.get("count", 0) or 0)}
+                for f in matches
+            ],
+        }
     except RuntimeError as e:
         # Missing API key
         logger.warning("JotForm not configured: %s", e)
@@ -135,32 +165,3 @@ def get_submission_count(name):
             "status": "error",
             "message": "Couldn't reach JotForm right now — try again in a moment.",
         }
-
-    if not matches:
-        suggestion = _suggest_form(name)
-        if suggestion:
-            return {
-                "status": "suggest",
-                "name": name,
-                "suggestion": {
-                    "title": suggestion.get("title", ""),
-                    "count": int(suggestion.get("count", 0) or 0),
-                },
-            }
-        return {"status": "none", "name": name}
-
-    if len(matches) == 1:
-        f = matches[0]
-        return {
-            "status": "ok",
-            "title": f.get("title", ""),
-            "count": int(f.get("count", 0) or 0),
-        }
-
-    return {
-        "status": "multiple",
-        "matches": [
-            {"title": f.get("title", ""), "count": int(f.get("count", 0) or 0)}
-            for f in matches
-        ],
-    }

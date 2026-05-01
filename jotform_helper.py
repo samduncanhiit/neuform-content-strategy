@@ -29,7 +29,24 @@ def _api_get(path, params=None):
 
 
 def _find_forms_by_name(name):
-    raise NotImplementedError
+    """
+    Return a list of form dicts whose title matches `name`.
+    - Exact case-insensitive match takes priority and short-circuits.
+    - Otherwise return all forms whose title contains `name` (case-insensitive).
+    - DELETED-status forms are always excluded.
+    """
+    needle = (name or "").strip().lower()
+    if not needle:
+        return []
+
+    forms = _api_get("/user/forms", {"limit": 1000})
+    active = [f for f in forms if f.get("status") != "DELETED"]
+
+    exact = [f for f in active if f.get("title", "").strip().lower() == needle]
+    if exact:
+        return exact
+
+    return [f for f in active if needle in f.get("title", "").lower()]
 
 
 def get_submission_count(name):

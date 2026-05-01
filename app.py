@@ -1184,6 +1184,7 @@ SLOW_KEYWORDS = [
     "trello", "hiit challenge", "tasks",
     "class report", "run a report", "check the class", "tonight's class",
     "no show", "no-show", "didn't show", "didn't sign in", "not signed in",
+    "submission", "submissions", "jotform", "form submissions",
 ]
 
 QUICK_REPLIES = [

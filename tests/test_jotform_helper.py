@@ -107,3 +107,66 @@ class TestFindFormsByName(unittest.TestCase):
         result = jotform_helper._find_forms_by_name("lead form")
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["id"], "1")
+
+
+class TestGetSubmissionCount(unittest.TestCase):
+    @patch("jotform_helper._find_forms_by_name")
+    def test_single_match_returns_ok(self, mock_find):
+        mock_find.return_value = [_form("1", "Lead Form", 42)]
+        result = jotform_helper.get_submission_count("lead form")
+        self.assertEqual(result, {
+            "status": "ok",
+            "title": "Lead Form",
+            "count": 42,
+        })
+
+    @patch("jotform_helper._find_forms_by_name")
+    def test_no_match_returns_none_status(self, mock_find):
+        mock_find.return_value = []
+        result = jotform_helper.get_submission_count("nope")
+        self.assertEqual(result, {"status": "none", "name": "nope"})
+
+    @patch("jotform_helper._find_forms_by_name")
+    def test_multiple_matches_returns_multiple(self, mock_find):
+        mock_find.return_value = [
+            _form("1", "Lead Form V1", 12),
+            _form("2", "Lead Form V2", 7),
+        ]
+        result = jotform_helper.get_submission_count("lead form")
+        self.assertEqual(result["status"], "multiple")
+        self.assertEqual(result["matches"], [
+            {"title": "Lead Form V1", "count": 12},
+            {"title": "Lead Form V2", "count": 7},
+        ])
+
+    @patch("jotform_helper._find_forms_by_name")
+    def test_missing_api_key_returns_error(self, mock_find):
+        mock_find.side_effect = RuntimeError("JOTFORM_API_KEY env var is not set")
+        result = jotform_helper.get_submission_count("anything")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("not configured", result["message"].lower())
+
+    @patch("jotform_helper._find_forms_by_name")
+    def test_http_401_returns_error(self, mock_find):
+        from requests import HTTPError, Response
+        resp = Response()
+        resp.status_code = 401
+        mock_find.side_effect = HTTPError(response=resp)
+        result = jotform_helper.get_submission_count("anything")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("invalid", result["message"].lower())
+
+    @patch("jotform_helper._find_forms_by_name")
+    def test_network_error_returns_error(self, mock_find):
+        from requests import ConnectionError as ReqConnErr
+        mock_find.side_effect = ReqConnErr("boom")
+        result = jotform_helper.get_submission_count("anything")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("try again", result["message"].lower())
+
+    @patch("jotform_helper._find_forms_by_name")
+    def test_count_is_coerced_to_int(self, mock_find):
+        # JotForm returns count as a string — make sure we coerce.
+        mock_find.return_value = [_form("1", "Lead Form", "99")]
+        result = jotform_helper.get_submission_count("lead form")
+        self.assertEqual(result["count"], 99)

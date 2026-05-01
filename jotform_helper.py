@@ -50,4 +50,55 @@ def _find_forms_by_name(name):
 
 
 def get_submission_count(name):
-    raise NotImplementedError
+    """
+    Look up a form by name and return its total submission count.
+
+    Returns a dict with one of these shapes:
+      {"status": "ok", "title": str, "count": int}
+      {"status": "none", "name": str}
+      {"status": "multiple", "matches": [{"title": str, "count": int}, ...]}
+      {"status": "error", "message": str}
+    """
+    try:
+        matches = _find_forms_by_name(name)
+    except RuntimeError as e:
+        # Missing API key
+        logger.warning("JotForm not configured: %s", e)
+        return {"status": "error", "message": "JotForm is not configured."}
+    except requests.HTTPError as e:
+        status = getattr(e.response, "status_code", None)
+        if status == 401:
+            return {
+                "status": "error",
+                "message": "JotForm API key is invalid — check the Railway env var.",
+            }
+        logger.exception("JotForm HTTP error")
+        return {
+            "status": "error",
+            "message": "Couldn't reach JotForm right now — try again in a moment.",
+        }
+    except requests.RequestException:
+        logger.exception("JotForm network error")
+        return {
+            "status": "error",
+            "message": "Couldn't reach JotForm right now — try again in a moment.",
+        }
+
+    if not matches:
+        return {"status": "none", "name": name}
+
+    if len(matches) == 1:
+        f = matches[0]
+        return {
+            "status": "ok",
+            "title": f.get("title", ""),
+            "count": int(f.get("count", 0) or 0),
+        }
+
+    return {
+        "status": "multiple",
+        "matches": [
+            {"title": f.get("title", ""), "count": int(f.get("count", 0) or 0)}
+            for f in matches
+        ],
+    }

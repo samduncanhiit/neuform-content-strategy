@@ -170,3 +170,43 @@ class TestGetSubmissionCount(unittest.TestCase):
         mock_find.return_value = [_form("1", "Lead Form", "99")]
         result = jotform_helper.get_submission_count("lead form")
         self.assertEqual(result["count"], 99)
+
+
+class TestFuzzyScore(unittest.TestCase):
+    def test_exact_match_is_highest(self):
+        self.assertGreater(
+            jotform_helper._fuzzy_score("lower body", "lower body"),
+            jotform_helper._fuzzy_score("lower body", "upper body"),
+        )
+
+    def test_substring_match_beats_token_only(self):
+        # substring scores 10+, token-only scores 1-9
+        self.assertGreaterEqual(
+            jotform_helper._fuzzy_score("strength", "lower body strength"),
+            10,
+        )
+
+    def test_case_insensitive(self):
+        self.assertEqual(
+            jotform_helper._fuzzy_score("Strength", "lower body strength"),
+            jotform_helper._fuzzy_score("strength", "LOWER BODY STRENGTH"),
+        )
+
+    def test_token_overlap_scores(self):
+        # "challenge round" should match "8 Week Challenge Round 14" via tokens
+        score = jotform_helper._fuzzy_score(
+            "challenge round", "8 Week Challenge Round 14"
+        )
+        self.assertGreater(score, 0)
+
+    def test_empty_needle_returns_zero(self):
+        self.assertEqual(jotform_helper._fuzzy_score("", "anything"), 0)
+
+    def test_empty_haystack_returns_zero(self):
+        self.assertEqual(jotform_helper._fuzzy_score("anything", ""), 0)
+
+    def test_no_overlap_returns_zero(self):
+        self.assertEqual(
+            jotform_helper._fuzzy_score("kettlebell", "labour day breakfast"),
+            0,
+        )

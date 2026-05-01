@@ -48,3 +48,11 @@ class TestApiGet(unittest.TestCase):
         }
         result = jotform_helper._api_get("/user/forms")
         self.assertEqual(result, [{"id": "f1", "title": "A"}])
+
+    @patch("jotform_helper.JOTFORM_API_KEY", "fake-key")
+    @patch("jotform_helper.requests.get")
+    def test_raises_on_http_error(self, mock_get):
+        from requests import HTTPError
+        mock_get.return_value.raise_for_status.side_effect = HTTPError("401")
+        with self.assertRaises(HTTPError):
+            jotform_helper._api_get("/user/forms")

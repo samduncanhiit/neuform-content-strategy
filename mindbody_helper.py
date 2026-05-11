@@ -1095,6 +1095,30 @@ def _format_membership_movement_monthly(result, days_back, net_str):
     return _truncate_to_whatsapp("\n".join(lines))
 
 
+def _format_range_header(window_start, window_end):
+    """Render a human-friendly inclusive date range, e.g. 'Mar 1 — Apr 18, 2026'.
+
+    When the start and end fall in different years, both years are shown:
+    'Dec 15, 2025 — Jan 14, 2026'.
+    """
+    from datetime import datetime as _dt
+
+    ws = _dt.strptime(window_start, "%Y-%m-%d").date()
+    we = _dt.strptime(window_end, "%Y-%m-%d").date()
+
+    left_month = ws.strftime("%b")
+    right_month = we.strftime("%b")
+    left_day = ws.day
+    right_day = we.day
+
+    if ws.year == we.year:
+        return f"{left_month} {left_day} — {right_month} {right_day}, {we.year}"
+    return (
+        f"{left_month} {left_day}, {ws.year} — "
+        f"{right_month} {right_day}, {we.year}"
+    )
+
+
 def _resolve_movement_window(days_back, start_date, end_date, today_iso=None):
     """Resolve membership-movement window inputs to (mode, window_start, window_end).
 

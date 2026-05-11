@@ -415,5 +415,23 @@ class TestResolveWindow(unittest.TestCase):
         self.assertEqual(we, "2026-04-18")
 
 
+class TestRangeHeader(unittest.TestCase):
+    def test_same_year_no_year_on_left(self):
+        out = mindbody_helper._format_range_header("2026-03-01", "2026-04-18")
+        self.assertEqual(out, "Mar 1 — Apr 18, 2026")
+
+    def test_same_month_same_year(self):
+        out = mindbody_helper._format_range_header("2026-04-01", "2026-04-18")
+        self.assertEqual(out, "Apr 1 — Apr 18, 2026")
+
+    def test_same_day(self):
+        out = mindbody_helper._format_range_header("2026-04-18", "2026-04-18")
+        self.assertEqual(out, "Apr 18 — Apr 18, 2026")
+
+    def test_cross_year_includes_both_years(self):
+        out = mindbody_helper._format_range_header("2025-12-15", "2026-01-14")
+        self.assertEqual(out, "Dec 15, 2025 — Jan 14, 2026")
+
+
 if __name__ == "__main__":
     unittest.main()

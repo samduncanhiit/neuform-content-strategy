@@ -1185,25 +1185,36 @@ def _resolve_movement_window(days_back, start_date, end_date, today_iso=None):
     return "range", start_d.strftime("%Y-%m-%d"), end_d.strftime("%Y-%m-%d")
 
 
-def get_membership_movement(days_back=90):
-    """Return signups and cancellations of tracked memberships over the last N days.
+def get_membership_movement(days_back=90, start_date=None, end_date=None):
+    """Return signups and cancellations of tracked memberships.
+
+    Two modes:
+      - Range mode: pass start_date and/or end_date (YYYY-MM-DD). Result["mode"]
+        is "range" and result["days_back"] is None.
+      - Monthly mode (default): pass days_back. Result["mode"] is "monthly" and
+        the existing rolling-window / per-month renderer applies.
 
     Signup  = tracked contract with StartDate within the window.
     Cancel  = tracked contract with TerminationDate within the window.
     Only contracts matching TRACKED_MEMBERSHIPS count. A single contract can
     appear in both lists if it both started and terminated in the window.
 
-    Cached for 1 hour per days_back value.
+    Cached for 1 hour per resolved (window_start, window_end). Raises
+    ValueError with a user-facing message on bad date input.
     """
-    cache_key = f"membership_movement_{days_back}"
+    mode, window_start, window_end = _resolve_movement_window(
+        days_back=days_back, start_date=start_date, end_date=end_date,
+    )
+
+    cache_key = f"membership_movement_{window_start}_{window_end}"
     cached = _cache_get(cache_key, ttl=CACHE_TTL_CLASSES)
     if cached is not None:
-        logger.info(f"Using cached membership movement ({days_back}d)")
+        logger.info(
+            f"Using cached membership movement ({window_start} → {window_end})"
+        )
         return cached
 
-    window_end = _now().strftime("%Y-%m-%d")
-    window_start = (_now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
-    modified_since = (_now() - timedelta(days=days_back)).strftime("%Y-%m-%dT00:00:00")
+    modified_since = f"{window_start}T00:00:00"
 
     candidates = _get_all_clients_paginated(
         {"LastModifiedDate": modified_since, "IncludeInactive": "true"},
@@ -1233,8 +1244,8 @@ def get_membership_movement(days_back=90):
             contract_id = contract.get("Id") or contract.get("ContractId") or 0
             client_name = _client_name(c)
 
-            start_date = (contract.get("StartDate") or "")[:10]
-            if start_date and window_start <= start_date <= window_end:
+            start_d = (contract.get("StartDate") or "")[:10]
+            if start_d and window_start <= start_d <= window_end:
                 key = (client_id, contract_id)
                 if key not in seen_signup:
                     seen_signup.add(key)
@@ -1243,7 +1254,7 @@ def get_membership_movement(days_back=90):
                         "contract_id": contract_id,
                         "name": client_name,
                         "membership": contract_name,
-                        "date": start_date,
+                        "date": start_d,
                     })
 
             term_date = (contract.get("TerminationDate") or "")[:10]
@@ -1263,7 +1274,8 @@ def get_membership_movement(days_back=90):
     cancellations.sort(key=lambda x: x["date"], reverse=True)
 
     result = {
-        "days_back": days_back,
+        "mode": mode,
+        "days_back": days_back if mode == "monthly" else None,
         "window_start": window_start,
         "window_end": window_end,
         "signups": signups,
@@ -1271,7 +1283,7 @@ def get_membership_movement(days_back=90):
     }
     _cache_set(cache_key, result)
     logger.info(
-        f"Membership movement {days_back}d: "
+        f"Membership movement [{mode}] {window_start} → {window_end}: "
         f"{len(signups)} signups, {len(cancellations)} cancellations "
         f"(scanned {len(candidates)} clients)"
     )

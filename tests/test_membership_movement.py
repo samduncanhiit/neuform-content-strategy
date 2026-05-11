@@ -520,5 +520,64 @@ class TestFormatRange(unittest.TestCase):
         self.assertLessEqual(len(out), mindbody_helper.WHATSAPP_MAX_CHARS)
 
 
+class TestGetMembershipMovementInputs(unittest.TestCase):
+    """Behavioural tests that mock the MindBody fetch so we exercise the
+    window-resolution + result-shape changes without hitting the API."""
+
+    def setUp(self):
+        # Reset any cached result between tests
+        mindbody_helper._CACHE.clear() if hasattr(mindbody_helper, "_CACHE") else None
+
+    def _patch_fetch(self, candidates=None, contracts_by_client=None):
+        candidates = candidates or []
+        contracts_by_client = contracts_by_client or {}
+
+        def fake_paginated(*args, **kwargs):
+            return candidates
+
+        def fake_api_get(path, params=None):
+            if path == "client/clientcontracts":
+                cid = params.get("ClientId")
+                return {"Contracts": contracts_by_client.get(cid, [])}
+            return {}
+
+        return fake_paginated, fake_api_get
+
+    def test_default_call_returns_monthly_mode(self):
+        fake_paginated, fake_api_get = self._patch_fetch()
+        orig_p = mindbody_helper._get_all_clients_paginated
+        orig_g = mindbody_helper._api_get
+        mindbody_helper._get_all_clients_paginated = fake_paginated
+        mindbody_helper._api_get = fake_api_get
+        try:
+            result = mindbody_helper.get_membership_movement()
+        finally:
+            mindbody_helper._get_all_clients_paginated = orig_p
+            mindbody_helper._api_get = orig_g
+        self.assertEqual(result["mode"], "monthly")
+        self.assertEqual(result["days_back"], 90)
+
+    def test_explicit_dates_return_range_mode(self):
+        fake_paginated, fake_api_get = self._patch_fetch()
+        orig_p = mindbody_helper._get_all_clients_paginated
+        orig_g = mindbody_helper._api_get
+        mindbody_helper._get_all_clients_paginated = fake_paginated
+        mindbody_helper._api_get = fake_api_get
+        try:
+            result = mindbody_helper.get_membership_movement(
+                start_date="2026-03-01", end_date="2026-04-18",
+            )
+        finally:
+            mindbody_helper._get_all_clients_paginated = orig_p
+            mindbody_helper._api_get = orig_g
+        self.assertEqual(result["mode"], "range")
+        self.assertEqual(result["window_start"], "2026-03-01")
+        self.assertEqual(result["window_end"], "2026-04-18")
+
+    def test_invalid_date_raises_valueerror(self):
+        with self.assertRaises(ValueError):
+            mindbody_helper.get_membership_movement(start_date="bogus")
+
+
 if __name__ == "__main__":
     unittest.main()

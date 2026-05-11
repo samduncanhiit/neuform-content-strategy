@@ -526,7 +526,7 @@ class TestGetMembershipMovementInputs(unittest.TestCase):
 
     def setUp(self):
         # Reset any cached result between tests
-        mindbody_helper._CACHE.clear() if hasattr(mindbody_helper, "_CACHE") else None
+        mindbody_helper._cache.clear()
 
     def _patch_fetch(self, candidates=None, contracts_by_client=None):
         candidates = candidates or []
@@ -573,6 +573,7 @@ class TestGetMembershipMovementInputs(unittest.TestCase):
         self.assertEqual(result["mode"], "range")
         self.assertEqual(result["window_start"], "2026-03-01")
         self.assertEqual(result["window_end"], "2026-04-18")
+        self.assertIsNone(result["days_back"])
 
     def test_invalid_date_raises_valueerror(self):
         with self.assertRaises(ValueError):

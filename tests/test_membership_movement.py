@@ -178,6 +178,14 @@ class TestFormatMonthly(unittest.TestCase):
         apr_section = out[apr_idx:]
         self.assertIn("All Access 6 Month — 1", apr_section)
 
+    def test_monthly_mode_via_mode_field(self):
+        result = self._result()
+        result["mode"] = "monthly"
+        result["days_back"] = 90
+        out = mindbody_helper.format_membership_movement(result)
+        self.assertIn("January 2026", out)
+        self.assertIn("Last 90 Days", out)
+
 
 class TestTruncation(unittest.TestCase):
     def _big_result(self, n=300):
@@ -431,6 +439,85 @@ class TestRangeHeader(unittest.TestCase):
     def test_cross_year_includes_both_years(self):
         out = mindbody_helper._format_range_header("2025-12-15", "2026-01-14")
         self.assertEqual(out, "Dec 15, 2025 — Jan 14, 2026")
+
+
+class TestFormatRange(unittest.TestCase):
+    def _result(self):
+        return {
+            "mode": "range",
+            "window_start": "2026-03-01",
+            "window_end": "2026-04-18",
+            "signups": [
+                {"client_id": 1, "contract_id": 10, "name": "Jane Smith",
+                 "membership": "All Access 6 Month", "date": "2026-03-14"},
+                {"client_id": 2, "contract_id": 11, "name": "Alex Ng",
+                 "membership": "All Access 6 Month", "date": "2026-04-01"},
+                {"client_id": 3, "contract_id": 12, "name": "Sam Lee",
+                 "membership": "Student Membership", "date": "2026-04-10"},
+            ],
+            "cancellations": [
+                {"client_id": 4, "contract_id": 13, "name": "John Doe",
+                 "membership": "All Access 6 Month", "date": "2026-03-22"},
+            ],
+        }
+
+    def test_header_uses_range_dates_not_days_back(self):
+        out = mindbody_helper.format_membership_movement(self._result())
+        self.assertIn("Membership Report", out)
+        self.assertIn("Mar 1 — Apr 18, 2026", out)
+        self.assertNotIn("Last", out)  # no "Last N Days" header in range mode
+
+    def test_counts_and_net(self):
+        out = mindbody_helper.format_membership_movement(self._result())
+        self.assertIn("SIGNUPS: 3", out)
+        self.assertIn("CANCELLATIONS: 1", out)
+        self.assertIn("Net: +2", out)
+
+    def test_counts_by_membership_no_names(self):
+        out = mindbody_helper.format_membership_movement(self._result())
+        self.assertIn("All Access 6 Month — 2", out)
+        self.assertIn("Student Membership — 1", out)
+        self.assertNotIn("Jane Smith", out)
+        self.assertNotIn("Sam Lee", out)
+        self.assertNotIn("John Doe", out)
+
+    def test_empty_range(self):
+        out = mindbody_helper.format_membership_movement({
+            "mode": "range",
+            "window_start": "2026-04-01",
+            "window_end": "2026-04-18",
+            "signups": [], "cancellations": [],
+        })
+        self.assertIn("Apr 1 — Apr 18, 2026", out)
+        self.assertIn("SIGNUPS: 0", out)
+        self.assertIn("CANCELLATIONS: 0", out)
+        self.assertIn("Net: 0", out)
+        self.assertIn("(none)", out)
+
+    def test_negative_net(self):
+        result = self._result()
+        result["signups"] = []
+        out = mindbody_helper.format_membership_movement(result)
+        self.assertIn("SIGNUPS: 0", out)
+        self.assertIn("CANCELLATIONS: 1", out)
+        self.assertIn("Net: -1", out)
+
+    def test_respects_whatsapp_cap(self):
+        result = {
+            "mode": "range",
+            "window_start": "2026-01-01",
+            "window_end": "2026-04-18",
+            "signups": [
+                {"client_id": i, "contract_id": 1000 + i,
+                 "name": f"Client {i}",
+                 "membership": f"Test Plan {i:03d}",
+                 "date": "2026-02-14"}
+                for i in range(300)
+            ],
+            "cancellations": [],
+        }
+        out = mindbody_helper.format_membership_movement(result)
+        self.assertLessEqual(len(out), mindbody_helper.WHATSAPP_MAX_CHARS)
 
 
 if __name__ == "__main__":

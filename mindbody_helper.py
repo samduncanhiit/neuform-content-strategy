@@ -839,23 +839,30 @@ def format_new_members(members, days_back=7):
 WHATSAPP_MAX_CHARS = 4000  # formatter-internal cap; send_whatsapp_reply chunks for Twilio's 1600-char WhatsApp limit
 
 
-def format_membership_movement(result, days_back=90, split_by_month=True):
+def format_membership_movement(result, days_back=None, split_by_month=True):
     """Format a membership movement result dict for WhatsApp.
 
-    Always renders a per-month breakdown with counts per membership type
-    (no individual names). The `split_by_month` parameter exists for
-    backwards compatibility and defaults to True; passing False produces
-    a single combined block with the same counts-only style.
+    Branches on result["mode"]:
+      - "range" → single combined block headed by the date range.
+      - "monthly" (or absent) → existing per-month breakdown.
+
+    The `days_back` and `split_by_month` parameters are kept for backwards
+    compatibility with monthly-mode callers; they are ignored in range mode.
     """
     signups = result.get("signups", [])
     cancellations = result.get("cancellations", [])
     net = len(signups) - len(cancellations)
     net_str = f"+{net}" if net > 0 else str(net)
 
-    if split_by_month:
-        return _format_membership_movement_monthly(result, days_back, net_str)
+    if result.get("mode") == "range":
+        return _format_membership_movement_range(result, net_str)
 
-    lines = [f"Membership Report — Last {days_back} Days", ""]
+    effective_days_back = days_back if days_back is not None else result.get("days_back", 90)
+
+    if split_by_month:
+        return _format_membership_movement_monthly(result, effective_days_back, net_str)
+
+    lines = [f"Membership Report — Last {effective_days_back} Days", ""]
     lines.append(f"SIGNUPS: {len(signups)}")
     lines.extend(_format_counts_block(signups))
     lines.append("")
@@ -1056,6 +1063,23 @@ def _truncate_to_whatsapp(text):
         return text
     cutoff = WHATSAPP_MAX_CHARS - len(_TRUNCATION_NOTICE)
     return text[:cutoff].rstrip() + _TRUNCATION_NOTICE
+
+
+def _format_membership_movement_range(result, net_str):
+    signups = result.get("signups", [])
+    cancellations = result.get("cancellations", [])
+    header = _format_range_header(result["window_start"], result["window_end"])
+
+    lines = ["Membership Report", header, ""]
+    lines.append(f"SIGNUPS: {len(signups)}")
+    lines.extend(_format_counts_block(signups))
+    lines.append("")
+    lines.append(f"CANCELLATIONS: {len(cancellations)}")
+    lines.extend(_format_counts_block(cancellations))
+    lines.append("")
+    lines.append(f"Net: {net_str}")
+
+    return _truncate_to_whatsapp("\n".join(lines))
 
 
 def _format_membership_movement_monthly(result, days_back, net_str):

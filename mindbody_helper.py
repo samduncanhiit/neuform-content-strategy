@@ -1066,6 +1066,7 @@ def _truncate_to_whatsapp(text):
 
 
 def _format_membership_movement_range(result, net_str):
+    """Render a range-mode membership movement result as a single combined block."""
     signups = result.get("signups", [])
     cancellations = result.get("cancellations", [])
     header = _format_range_header(result["window_start"], result["window_end"])

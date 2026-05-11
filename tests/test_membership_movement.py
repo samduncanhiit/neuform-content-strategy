@@ -383,6 +383,28 @@ class TestResolveWindow(unittest.TestCase):
             )
         self.assertIn("365", str(ctx.exception))
 
+    def test_exactly_365_days_allowed(self):
+        mode, ws, we = mindbody_helper._resolve_movement_window(
+            days_back=90,
+            start_date="2025-01-01", end_date="2026-01-01",  # 365-day span
+            today_iso="2026-05-11",
+        )
+        self.assertEqual(mode, "range")
+        self.assertEqual(ws, "2025-01-01")
+        self.assertEqual(we, "2026-01-01")
+
+    def test_only_end_date_default_start_ignores_days_back(self):
+        # Confirms the start-side default is always end_date - 90 days,
+        # not end_date - days_back days, when only end_date is provided.
+        mode, ws, we = mindbody_helper._resolve_movement_window(
+            days_back=30,
+            start_date=None, end_date="2026-04-18",
+            today_iso="2026-05-11",
+        )
+        self.assertEqual(mode, "range")
+        self.assertEqual(we, "2026-04-18")
+        self.assertEqual(ws, "2026-01-18")  # always 90 days before end_date
+
     def test_same_start_and_end_allowed(self):
         mode, ws, we = mindbody_helper._resolve_movement_window(
             days_back=90, start_date="2026-04-18", end_date="2026-04-18",

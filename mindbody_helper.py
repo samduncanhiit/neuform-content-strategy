@@ -292,10 +292,11 @@ TRACKED_MEMBERSHIPS = [
     "all access membership - 3 month",
     "all access membership - 6 month",
     "all access membership - conversion",
-    "all access membership - flex no contract",
+    "all access membership - flexi no contract",
     "conversion 12 months",
     "conversion 6 months",
     "conversion flexi",
+    "emergency services membership",
     "post challenge",
     "student membership",
 ]

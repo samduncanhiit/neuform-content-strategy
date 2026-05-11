@@ -314,5 +314,84 @@ class TestFormatClientDetail(unittest.TestCase):
         self.assertIn("Which one", out)
 
 
+class TestResolveWindow(unittest.TestCase):
+    def test_neither_date_uses_days_back(self):
+        mode, ws, we = mindbody_helper._resolve_movement_window(
+            days_back=90, start_date=None, end_date=None,
+            today_iso="2026-05-11",
+        )
+        self.assertEqual(mode, "monthly")
+        self.assertEqual(we, "2026-05-11")
+        self.assertEqual(ws, "2026-02-10")  # 90 days before 2026-05-11
+
+    def test_both_dates_uses_range(self):
+        mode, ws, we = mindbody_helper._resolve_movement_window(
+            days_back=90, start_date="2026-03-01", end_date="2026-04-18",
+            today_iso="2026-05-11",
+        )
+        self.assertEqual(mode, "range")
+        self.assertEqual(ws, "2026-03-01")
+        self.assertEqual(we, "2026-04-18")
+
+    def test_only_start_date_defaults_end_to_today(self):
+        mode, ws, we = mindbody_helper._resolve_movement_window(
+            days_back=90, start_date="2026-03-01", end_date=None,
+            today_iso="2026-05-11",
+        )
+        self.assertEqual(mode, "range")
+        self.assertEqual(ws, "2026-03-01")
+        self.assertEqual(we, "2026-05-11")
+
+    def test_only_end_date_defaults_start_to_end_minus_90(self):
+        mode, ws, we = mindbody_helper._resolve_movement_window(
+            days_back=90, start_date=None, end_date="2026-04-18",
+            today_iso="2026-05-11",
+        )
+        self.assertEqual(mode, "range")
+        self.assertEqual(we, "2026-04-18")
+        self.assertEqual(ws, "2026-01-18")  # 90 days before 2026-04-18
+
+    def test_invalid_start_date_format_raises(self):
+        with self.assertRaises(ValueError) as ctx:
+            mindbody_helper._resolve_movement_window(
+                days_back=90, start_date="03/01/2026", end_date=None,
+                today_iso="2026-05-11",
+            )
+        self.assertIn("YYYY-MM-DD", str(ctx.exception))
+
+    def test_invalid_end_date_format_raises(self):
+        with self.assertRaises(ValueError) as ctx:
+            mindbody_helper._resolve_movement_window(
+                days_back=90, start_date=None, end_date="not-a-date",
+                today_iso="2026-05-11",
+            )
+        self.assertIn("YYYY-MM-DD", str(ctx.exception))
+
+    def test_start_after_end_raises(self):
+        with self.assertRaises(ValueError) as ctx:
+            mindbody_helper._resolve_movement_window(
+                days_back=90, start_date="2026-04-18", end_date="2026-03-01",
+                today_iso="2026-05-11",
+            )
+        self.assertIn("on or before", str(ctx.exception))
+
+    def test_range_over_365_days_raises(self):
+        with self.assertRaises(ValueError) as ctx:
+            mindbody_helper._resolve_movement_window(
+                days_back=90, start_date="2024-01-01", end_date="2026-04-18",
+                today_iso="2026-05-11",
+            )
+        self.assertIn("365", str(ctx.exception))
+
+    def test_same_start_and_end_allowed(self):
+        mode, ws, we = mindbody_helper._resolve_movement_window(
+            days_back=90, start_date="2026-04-18", end_date="2026-04-18",
+            today_iso="2026-05-11",
+        )
+        self.assertEqual(mode, "range")
+        self.assertEqual(ws, "2026-04-18")
+        self.assertEqual(we, "2026-04-18")
+
+
 if __name__ == "__main__":
     unittest.main()

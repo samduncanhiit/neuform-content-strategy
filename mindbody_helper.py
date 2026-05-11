@@ -1095,6 +1095,47 @@ def _format_membership_movement_monthly(result, days_back, net_str):
     return _truncate_to_whatsapp("\n".join(lines))
 
 
+def _resolve_movement_window(days_back, start_date, end_date, today_iso=None):
+    """Resolve membership-movement window inputs to (mode, window_start, window_end).
+
+    mode is "range" when either start_date or end_date is provided, else "monthly".
+    Dates are inclusive ISO YYYY-MM-DD strings. Raises ValueError with a
+    user-facing message on bad input.
+    """
+    from datetime import datetime as _dt, timedelta as _td
+
+    def _parse(label, s):
+        try:
+            return _dt.strptime(s, "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"Invalid {label} — expected YYYY-MM-DD, got {s!r}."
+            )
+
+    today = (
+        _dt.strptime(today_iso, "%Y-%m-%d").date()
+        if today_iso else _now().date()
+    )
+
+    if start_date is None and end_date is None:
+        ws_date = today - _td(days=days_back)
+        return "monthly", ws_date.strftime("%Y-%m-%d"), today.strftime("%Y-%m-%d")
+
+    end_d = _parse("end_date", end_date) if end_date else today
+    start_d = _parse("start_date", start_date) if start_date else (end_d - _td(days=90))
+
+    if start_d > end_d:
+        raise ValueError(
+            "Invalid date range — start_date must be on or before end_date."
+        )
+    if (end_d - start_d).days > 365:
+        raise ValueError(
+            "Invalid date range — span must be 365 days or less."
+        )
+
+    return "range", start_d.strftime("%Y-%m-%d"), end_d.strftime("%Y-%m-%d")
+
+
 def get_membership_movement(days_back=90):
     """Return signups and cancellations of tracked memberships over the last N days.
 

@@ -98,14 +98,18 @@ SYSTEM_PROMPT = (
     "Do NOT use search_clients for this — search_clients only finds a member, it doesn't "
     "return membership or attendance data. "
     "IMPORTANT: When the user asks for a 'membership report', 'cancellations and signups', "
-    "or any signup/cancellation report covering more than 30 days (e.g. 'membership report "
-    "last 3 months', 'membership report for last month', 'last 6 months'), you MUST use "
-    "get_membership_movement. It always returns a per-month breakdown with counts per "
-    "membership type (no individual names). It only counts debiting memberships — casual "
-    "passes, offers, and challenge memberships are excluded automatically. RETURN THE TOOL "
-    "OUTPUT VERBATIM to the user — do NOT paraphrase, summarize, reformat, or drop sections. "
-    "Do NOT use get_member_stats for these questions — that tool is for the current "
-    "active/suspended/expired snapshot only. "
+    "or any signup/cancellation report, you MUST use get_membership_movement. "
+    "For rolling windows ('membership report last 3 months', 'membership report for "
+    "last month', 'last 6 months'), pass days_back; the output is broken down by "
+    "calendar month with counts per membership type. For specific date ranges "
+    "('between March 1 and April 18', 'in March', 'from Jan 15 to Feb 28', "
+    "'cancellations last week'), pass start_date and/or end_date in YYYY-MM-DD "
+    "(today's date is given below — resolve relative phrases first); the output is "
+    "a single combined block for the range. Only debiting memberships count — "
+    "casual passes, offers, and challenge memberships are excluded automatically. "
+    "RETURN THE TOOL OUTPUT VERBATIM to the user — do NOT paraphrase, summarize, "
+    "reformat, or drop sections. Do NOT use get_member_stats for these questions — "
+    "that tool is for the current active/suspended/expired snapshot only. "
     "IMPORTANT: When the user asks about no-shows, who didn't show up, who didn't sign in, "
     "or who didn't attend a class, you MUST use the get_noshow_report tool. "
     "Do NOT use get_todays_classes or get_classes_history for this — those only show booking counts. "
@@ -348,20 +352,35 @@ _MINDBODY_TOOLS = [
     {
         "name": "get_membership_movement",
         "description": (
-            "Membership report: signups AND cancellations of debiting memberships over a variable window, "
-            "always broken down by calendar month with counts per membership type (no individual names). "
-            "Use this whenever the user asks for a 'membership report' or any cancellation/signup breakdown "
-            "spanning more than 30 days (e.g. 'membership report last 3 months', 'membership report for "
-            "last month', 'signups and cancellations last 6 months'). ONLY debiting memberships count — "
-            "casual passes, offers, and challenge memberships are excluded automatically."
+            "Membership report: signups AND cancellations of debiting memberships. "
+            "Two ways to scope the window:\n"
+            "  • For rolling windows ('membership report last 3 months', 'last 6 months', "
+            "    'last month'), pass days_back. Output is broken down by calendar month "
+            "    with counts per membership type.\n"
+            "  • For specific date ranges ('between March 1 and April 18', 'in March', "
+            "    'from Jan 15 to Feb 28', 'cancellations last week'), pass start_date "
+            "    and/or end_date (YYYY-MM-DD). Output is a single combined block for "
+            "    the range with counts per membership type. Today's date is given above; "
+            "    resolve relative phrases to ISO dates before calling.\n"
+            "ONLY debiting memberships count — casual passes, offers, and challenge "
+            "memberships are excluded automatically. Use this whenever the user asks "
+            "for a 'membership report' or any cancellation/signup breakdown."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "days_back": {
                     "type": "integer",
-                    "description": "Days back. 30=last month, 90=last 3 months, 180=last 6 months. Default 90, max 365.",
+                    "description": "Rolling window in days. 30=last month, 90=last 3 months, 180=last 6 months. Default 90, max 365. Ignored if start_date or end_date is provided.",
                     "default": 90,
+                },
+                "start_date": {
+                    "type": "string",
+                    "description": "Start of date range, YYYY-MM-DD. Optional. If provided (with or without end_date), days_back is ignored and the report is rendered as a single combined block for the range.",
+                },
+                "end_date": {
+                    "type": "string",
+                    "description": "End of date range, YYYY-MM-DD. Optional. Defaults to today when start_date is given.",
                 },
             },
             "required": [],
@@ -732,8 +751,15 @@ def handle_tool_call(tool_name, tool_input, user_email=None, raw_number=None):
 
     elif tool_name == "get_membership_movement":
         from mindbody_helper import get_membership_movement, format_membership_movement
+        start_date = tool_input.get("start_date") or None
+        end_date = tool_input.get("end_date") or None
         days = max(1, min(int(tool_input.get("days_back", 90) or 90), 365))
-        result = get_membership_movement(days_back=days)
+        try:
+            result = get_membership_movement(
+                days_back=days, start_date=start_date, end_date=end_date,
+            )
+        except ValueError as e:
+            return str(e)
         return format_membership_movement(result, days_back=days, split_by_month=True)
 
     elif tool_name == "get_arrears_report":

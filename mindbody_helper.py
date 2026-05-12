@@ -1269,7 +1269,10 @@ def get_membership_movement(days_back=90, start_date=None, end_date=None):
             client_name = _client_name(c)
 
             start_d = (contract.get("StartDate") or "")[:10]
-            if start_d and window_start <= start_d <= window_end:
+            is_auto_renewal = bool(contract.get("AutoRenewClientContractID"))
+            if (start_d
+                    and window_start <= start_d <= window_end
+                    and not is_auto_renewal):
                 key = (client_id, contract_id)
                 if key not in seen_signup:
                     seen_signup.add(key)

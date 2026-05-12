@@ -602,6 +602,68 @@ class TestGetMembershipMovementInputs(unittest.TestCase):
         with self.assertRaises(ValueError):
             mindbody_helper.get_membership_movement(start_date="bogus")
 
+    def test_auto_renewed_contracts_excluded_from_signups(self):
+        # Two clients each with one tracked contract starting in the window.
+        # Client 1's contract is a fresh signup (AutoRenewClientContractID is None).
+        # Client 2's contract is an auto-renewal (AutoRenewClientContractID set).
+        candidates = [{"Id": 1}, {"Id": 2}]
+        contracts_by_client = {
+            1: [{
+                "Id": 100, "ContractName": "All access membership - 6 month contract",
+                "StartDate": "2026-05-05T00:00:00", "TerminationDate": None,
+                "AutoRenewClientContractID": None,
+            }],
+            2: [{
+                "Id": 200, "ContractName": "All access membership - 6 month contract",
+                "StartDate": "2026-05-09T00:00:00", "TerminationDate": None,
+                "AutoRenewClientContractID": 5008,
+            }],
+        }
+        fake_paginated, fake_api_get = self._patch_fetch(candidates, contracts_by_client)
+        orig_p = mindbody_helper._get_all_clients_paginated
+        orig_g = mindbody_helper._api_get
+        mindbody_helper._get_all_clients_paginated = fake_paginated
+        mindbody_helper._api_get = fake_api_get
+        try:
+            result = mindbody_helper.get_membership_movement(
+                start_date="2026-05-03", end_date="2026-05-09",
+            )
+        finally:
+            mindbody_helper._get_all_clients_paginated = orig_p
+            mindbody_helper._api_get = orig_g
+        signup_client_ids = {s["client_id"] for s in result["signups"]}
+        self.assertIn(1, signup_client_ids)
+        self.assertNotIn(2, signup_client_ids)
+        self.assertEqual(len(result["signups"]), 1)
+
+    def test_auto_renewed_contract_can_still_appear_in_cancellations(self):
+        # Even if a contract was created via auto-renewal, its termination in
+        # the window is still a real cancellation (the member actually left).
+        candidates = [{"Id": 3}]
+        contracts_by_client = {
+            3: [{
+                "Id": 300, "ContractName": "All access membership - 6 month contract",
+                "StartDate": "2024-01-01T00:00:00",
+                "TerminationDate": "2026-05-06T00:00:00",
+                "AutoRenewClientContractID": 999,
+            }],
+        }
+        fake_paginated, fake_api_get = self._patch_fetch(candidates, contracts_by_client)
+        orig_p = mindbody_helper._get_all_clients_paginated
+        orig_g = mindbody_helper._api_get
+        mindbody_helper._get_all_clients_paginated = fake_paginated
+        mindbody_helper._api_get = fake_api_get
+        try:
+            result = mindbody_helper.get_membership_movement(
+                start_date="2026-05-03", end_date="2026-05-09",
+            )
+        finally:
+            mindbody_helper._get_all_clients_paginated = orig_p
+            mindbody_helper._api_get = orig_g
+        self.assertEqual(len(result["signups"]), 0)
+        cancel_client_ids = {c["client_id"] for c in result["cancellations"]}
+        self.assertIn(3, cancel_client_ids)
+
 
 if __name__ == "__main__":
     unittest.main()

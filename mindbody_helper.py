@@ -1073,14 +1073,38 @@ def _format_membership_movement_range(result, net_str):
 
     lines = ["Membership Report", header, ""]
     lines.append(f"SIGNUPS: {len(signups)}")
-    lines.extend(_format_counts_block(signups))
+    lines.extend(_format_counts_with_names_block(signups))
     lines.append("")
     lines.append(f"CANCELLATIONS: {len(cancellations)}")
-    lines.extend(_format_counts_block(cancellations))
+    lines.extend(_format_counts_with_names_block(cancellations))
     lines.append("")
     lines.append(f"Net: {net_str}")
 
     return _truncate_to_whatsapp("\n".join(lines))
+
+
+def _format_counts_with_names_block(events):
+    """Like _format_counts_block, but lists each member's name and short date
+    underneath their membership group. Names within a group are sorted by
+    event date ascending."""
+    if not events:
+        return ["(none)"]
+    from datetime import datetime as _dt
+
+    by_mem = {}
+    for e in events:
+        by_mem.setdefault(e["membership"], []).append(e)
+    ordered = sorted(by_mem.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+
+    lines = []
+    for mem_name, mem_events in ordered:
+        lines.append(f"• {mem_name} — {len(mem_events)}")
+        for ev in sorted(mem_events, key=lambda e: e["date"]):
+            d = _dt.strptime(ev["date"], "%Y-%m-%d").date()
+            short_date = f"{d.strftime('%b')} {d.day}"
+            name = ev.get("name") or "Unknown"
+            lines.append(f"   - {name} ({short_date})")
+    return lines
 
 
 def _format_membership_movement_monthly(result, days_back, net_str):

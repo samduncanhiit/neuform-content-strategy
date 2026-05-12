@@ -473,13 +473,36 @@ class TestFormatRange(unittest.TestCase):
         self.assertIn("CANCELLATIONS: 1", out)
         self.assertIn("Net: +2", out)
 
-    def test_counts_by_membership_no_names(self):
+    def test_counts_and_names_by_membership(self):
         out = mindbody_helper.format_membership_movement(self._result())
+        # Membership header line with count
         self.assertIn("All Access 6 Month — 2", out)
         self.assertIn("Student Membership — 1", out)
-        self.assertNotIn("Jane Smith", out)
-        self.assertNotIn("Sam Lee", out)
-        self.assertNotIn("John Doe", out)
+        # Names appear under their membership group with short dates
+        self.assertIn("Jane Smith (Mar 14)", out)
+        self.assertIn("Alex Ng (Apr 1)", out)
+        self.assertIn("Sam Lee (Apr 10)", out)
+        self.assertIn("John Doe (Mar 22)", out)
+
+    def test_names_sorted_by_date_within_membership_group(self):
+        out = mindbody_helper.format_membership_movement(self._result())
+        # Within "All Access 6 Month" signups: Jane Smith (Mar 14) before Alex Ng (Apr 1)
+        jane = out.find("Jane Smith")
+        alex = out.find("Alex Ng")
+        self.assertGreater(jane, 0)
+        self.assertGreater(alex, jane)
+
+    def test_names_grouped_under_correct_membership(self):
+        out = mindbody_helper.format_membership_movement(self._result())
+        # "All Access 6 Month — 2" header must come before its two names,
+        # and before the "Student Membership — 1" header
+        aa_header = out.find("All Access 6 Month — 2")
+        student_header = out.find("Student Membership — 1")
+        jane = out.find("Jane Smith")
+        sam = out.find("Sam Lee")
+        self.assertGreater(jane, aa_header)
+        self.assertLess(jane, student_header)  # Jane sits between the two headers
+        self.assertGreater(sam, student_header)  # Sam sits after Student header
 
     def test_empty_range(self):
         out = mindbody_helper.format_membership_movement({

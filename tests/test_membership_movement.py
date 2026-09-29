@@ -664,6 +664,49 @@ class TestGetMembershipMovementInputs(unittest.TestCase):
         cancel_client_ids = {c["client_id"] for c in result["cancellations"]}
         self.assertIn(3, cancel_client_ids)
 
+    def test_duplicate_contract_rows_count_as_one_cancellation(self):
+        # When an auto-renewing membership is terminated, MindBody stamps the
+        # SAME termination date on both the expiring term and the generated
+        # renewal row (different contract Ids). That is one member leaving, so
+        # it must count as one cancellation, not two. (Mirrors Sian Jones:
+        # contracts 5322 + 5955, both terminated 2026-04-17.)
+        candidates = [{"Id": 208}]
+        contracts_by_client = {
+            208: [
+                {
+                    "Id": 5322,
+                    "ContractName": "All access membership - conversion",
+                    "StartDate": "2025-11-14T00:00:00",
+                    "TerminationDate": "2026-04-17T00:00:00",
+                    "AutoRenewClientContractID": None,
+                },
+                {
+                    "Id": 5955,
+                    "ContractName": "All access membership - conversion",
+                    "StartDate": "2026-04-17T00:00:00",
+                    "TerminationDate": "2026-04-17T00:00:00",
+                    "AutoRenewClientContractID": 5322,
+                },
+            ],
+        }
+        fake_paginated, fake_api_get = self._patch_fetch(candidates, contracts_by_client)
+        orig_p = mindbody_helper._get_all_clients_paginated
+        orig_g = mindbody_helper._api_get
+        mindbody_helper._get_all_clients_paginated = fake_paginated
+        mindbody_helper._api_get = fake_api_get
+        try:
+            result = mindbody_helper.get_membership_movement(
+                start_date="2026-04-01", end_date="2026-04-30",
+            )
+        finally:
+            mindbody_helper._get_all_clients_paginated = orig_p
+            mindbody_helper._api_get = orig_g
+        # The renewal row is excluded from signups; the original started before
+        # the window — so no signups, and exactly one cancellation.
+        self.assertEqual(len(result["signups"]), 0)
+        self.assertEqual(len(result["cancellations"]), 1)
+        self.assertEqual(result["cancellations"][0]["client_id"], 208)
+
 
 if __name__ == "__main__":
     unittest.main()

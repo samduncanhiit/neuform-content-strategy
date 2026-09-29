@@ -1286,7 +1286,14 @@ def get_membership_movement(days_back=90, start_date=None, end_date=None):
 
             term_date = (contract.get("TerminationDate") or "")[:10]
             if term_date and window_start <= term_date <= window_end:
-                key = (client_id, contract_id)
+                # MindBody stamps the same TerminationDate on every contract row
+                # of an auto-renewing membership (the expiring term + the
+                # generated renewal row, each with its own Id). Dedup by
+                # client+membership+date so one member leaving counts once, not
+                # once per contract row. Keying on contract_id would let both
+                # rows through; excluding auto-renewals would drop members whose
+                # terminated term is itself a renewal row.
+                key = (client_id, contract_name, term_date)
                 if key not in seen_cancellation:
                     seen_cancellation.add(key)
                     cancellations.append({

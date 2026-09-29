@@ -1,0 +1,6 @@
+content-calendar/
+docs/
+tests/
+*.html
+.claude/
+.git/

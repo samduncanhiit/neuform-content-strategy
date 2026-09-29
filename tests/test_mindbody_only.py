@@ -163,5 +163,27 @@ class TestRevenuePassword(unittest.TestCase):
             self.assertNotIn("samistheman", f.read())
 
 
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+class TestRepoContents(unittest.TestCase):
+    def test_removed_modules_are_gone(self):
+        for mod in REMOVED_MODULES:
+            with self.subTest(module=mod):
+                self.assertFalse(os.path.exists(os.path.join(REPO_ROOT, f"{mod}.py")))
+
+    def test_content_calendar_is_gone(self):
+        self.assertFalse(os.path.exists(os.path.join(REPO_ROOT, "content-calendar")))
+
+    def test_mindbody_maintenance_script_kept(self):
+        self.assertTrue(os.path.exists(os.path.join(REPO_ROOT, "docs", "list_contracts.py")))
+
+    def test_requirements_are_mindbody_only(self):
+        with open(os.path.join(REPO_ROOT, "requirements.txt")) as f:
+            packages = {line.split("==")[0].strip().lower()
+                        for line in f if line.strip() and not line.startswith("#")}
+        self.assertEqual(packages, {"requests", "flask", "twilio", "anthropic", "gunicorn"})
+
+
 if __name__ == "__main__":
     unittest.main()

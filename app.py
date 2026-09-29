@@ -495,14 +495,23 @@ def _build_system_prompt(user_name, raw_number):
     if user_name:
         parts.append(f"The user's name is {user_name}. Greet them as 'Hey {user_name}'.")
 
-    # Erin: password-protect revenue data
+    # Erin: revenue is password-protected. Fail closed if REVENUE_PASSWORD is unset.
     if raw_number == "+61421188443":
-        parts.append(
-            "IMPORTANT: This user does NOT have access to revenue data. "
-            "If they ask about revenue, income, money, debits, or financial reports, "
-            "ask for a password first. Correct password: 'samistheman'. "
-            "Only call get_revenue if they give the exact password."
-        )
+        revenue_password = os.environ.get("REVENUE_PASSWORD", "").strip()
+        if revenue_password:
+            parts.append(
+                "IMPORTANT: This user does NOT have access to revenue data. "
+                "If they ask about revenue, income, money, debits, or financial reports, "
+                f"ask for a password first. Correct password: '{revenue_password}'. "
+                "Only call get_revenue if they give the exact password."
+            )
+        else:
+            parts.append(
+                "IMPORTANT: This user does NOT have access to revenue data. "
+                "If they ask about revenue, income, money, debits, or financial reports, "
+                "tell them revenue isn't available to them. "
+                "Never call get_revenue for this user."
+            )
 
     parts.append(f"Today is {today_str}.")
     parts.append(

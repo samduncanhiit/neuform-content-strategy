@@ -128,5 +128,40 @@ class TestSystemPrompt(unittest.TestCase):
                 self.assertIn(phrase, prompt)
 
 
+class TestRevenuePassword(unittest.TestCase):
+    def _prompt(self, raw_number, env):
+        with patch.dict(os.environ, env, clear=False):
+            if "REVENUE_PASSWORD" not in env:
+                os.environ.pop("REVENUE_PASSWORD", None)
+            return app._build_system_prompt("Erin" if raw_number == ERIN else "Sam", raw_number)
+
+    def test_password_comes_from_env(self):
+        prompt = self._prompt(ERIN, {"REVENUE_PASSWORD": "hunter2"})
+        self.assertIn("Correct password: 'hunter2'", prompt)
+
+    def test_password_is_stripped(self):
+        prompt = self._prompt(ERIN, {"REVENUE_PASSWORD": "  hunter2\n"})
+        self.assertIn("Correct password: 'hunter2'", prompt)
+
+    def test_unset_password_fails_closed(self):
+        prompt = self._prompt(ERIN, {})
+        self.assertNotIn("Correct password", prompt)
+        self.assertIn("Never call get_revenue for this user", prompt)
+
+    def test_whitespace_password_fails_closed(self):
+        prompt = self._prompt(ERIN, {"REVENUE_PASSWORD": "   "})
+        self.assertNotIn("Correct password", prompt)
+        self.assertIn("Never call get_revenue for this user", prompt)
+
+    def test_other_users_never_see_password_text(self):
+        prompt = self._prompt(SAM, {"REVENUE_PASSWORD": "hunter2"})
+        self.assertNotIn("hunter2", prompt)
+        self.assertNotIn("get_revenue for this user", prompt)
+
+    def test_old_password_not_in_source(self):
+        with open(APP_SOURCE_PATH) as f:
+            self.assertNotIn("samistheman", f.read())
+
+
 if __name__ == "__main__":
     unittest.main()

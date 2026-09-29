@@ -9,7 +9,6 @@ import logging
 import traceback
 import threading
 import time
-import requests
 from collections import defaultdict
 from functools import wraps
 
@@ -43,56 +42,23 @@ USER_NAMES = {
     "+61421188443": "Erin",
 }
 
-USER_EMAILS = {
-    "+61420233508": "sam@hiitaustralia.com.au",
-    "+61481123186": "chontel@hiitaustralia.com.au",
-    "+61421188443": "admin@hiitaustralia.com.au",
-}
-
-# Gmail accounts (separate from Outlook)
-USER_GMAIL = {
-    "+61481123186": "chontelhiit@gmail.com",
-}
-
-# Google Calendar IDs per user
-USER_CALENDAR = {
-    "+61420233508": [os.environ.get("GOOGLE_CALENDAR_ID", "primary")],
-    "+61481123186": ["chontelhiit@gmail.com"],
-    "+61421188443": [
-        "hiitstationmealplan@gmail.com",
-        "2edc99a76751fd3e9b49e8b5ad1e88c3b008086eb5fe90ce8554dcea6910b4e1@group.calendar.google.com",
-        "cd723d3f7abb0bd192760dbe566891837b4bf3fda386c45628c80c1daedf5ecd@group.calendar.google.com",
-    ],
-}
-
-# Per-user Trello config. Only users in this dict get Trello write access.
-USER_TRELLO = {
-    "+61421188443": {  # Erin
-        "board": "HIIT Office",
-        "todo_list": "To Do List",
-        "done_list": "Done",
-    },
-}
-
 SYSTEM_PROMPT = (
-    "You are an AI assistant for HIIT Station Capalaba helping manage daily operations. "
-    "You are helpful, concise, and professional. You assist with scheduling, member queries, "
-    "class information, and general operational tasks. Keep responses brief and suitable "
-    "for WhatsApp messaging.\n\n"
+    "You are an AI assistant for HIIT Station Capalaba. You answer questions about the gym's "
+    "MindBody data: classes, bookings, members, payments, revenue, and reports. "
+    "Keep responses brief and suitable for WhatsApp messaging.\n\n"
+    "SCOPE: If the user asks for anything outside MindBody (email, calendar, Trello, forms, "
+    "or general tasks), do not call any tool and reply with exactly one line: "
+    "'Sorry, this bot only handles MindBody questions.'\n\n"
     "CRITICAL RULE — verbatim tool output: When the get_membership_movement tool returns a "
     "result, your ENTIRE reply to the user MUST be exactly that tool output, character-for-"
     "character. Do NOT add a greeting, introduction, 'Hey Sam', heading, summary, closing "
     "note, emoji, or any commentary before or after. Do NOT shorten, abbreviate, reorder, "
     "rewrite headings, change bullet characters, or drop sections. Do NOT insert '(truncated)' "
     "or any other marker. Copy the tool output into your reply exactly as received and stop.\n\n"
-    "You have access to tools for MindBody (classes, members, revenue, payments, "
-    "new member signups, arrears report, weekly summary, no-show reports), "
-    "Trello (read HIIT Challenge board cards; and — for users with write access — add, edit, move, and archive cards on their configured board), "
-    "Google Calendar (personal calendar events and meetings), and "
-    "Outlook (reading inbox, creating email drafts). "
-    "IMPORTANT: When the user asks about 'my calendar', 'meetings', 'appointments', or 'what do I have on', "
-    "always use the get_calendar_events tool (Google Calendar), NOT MindBody classes. "
-    "MindBody is only for gym class schedules — use get_todays_classes or get_classes_history for that. "
+    "You have access to MindBody tools (classes, members, client detail, revenue, payments, "
+    "new member signups, membership movement, arrears report, weekly summary, class reports, "
+    "no-show reports). "
+    "For gym class schedules use get_todays_classes or get_classes_history. "
     "When the user asks about a specific member's details, membership, how long they've been "
     "a member, or how many classes they've done, use get_client_detail with their name. "
     "Do NOT use search_clients for this — search_clients only finds a member, it doesn't "
@@ -114,19 +80,6 @@ SYSTEM_PROMPT = (
     "or who didn't attend a class, you MUST use the get_noshow_report tool. "
     "Do NOT use get_todays_classes or get_classes_history for this — those only show booking counts. "
     "get_noshow_report checks the actual sign-in roster and returns individual client names. "
-    "When the user asks to send an email, always create a draft instead — never send directly. "
-    "IMPORTANT — Trello write tools: When the user says 'I've completed X', 'I've done X', "
-    "'tick off X', or 'mark X done', use move_trello_card (it defaults to the user's Done list). "
-    "Do NOT use remove_trello_card for completion — that is only for explicit delete/archive/remove. "
-    "For remove_trello_card, you MUST follow a two-step flow: first call WITHOUT confirmed=true to "
-    "show the user what will be archived, wait for an explicit 'yes' or 'confirm' in the next user "
-    "message, then call again with confirmed=true. NEVER pass confirmed=true on the first call. "
-    "For add_trello_card, if the user doesn't name a list, leave list_name unset — the tool defaults "
-    "to their To Do list. "
-    "IMPORTANT — JotForm: When the user asks 'how many submissions for X', 'submission count for X', "
-    "'how many people filled out X', or any similar question about a JotForm form's submission count, "
-    "use get_jotform_submissions with the form name they mentioned. If the bot returns multiple matches, "
-    "show the list to the user verbatim and ask them to pick one. "
     "FORMATTING: All responses must be plain text suitable for copy-pasting into other chats. "
     "Never use markdown tables, horizontal lines (---), pipes (|), or special formatting. "
     "Use simple lists with numbers or bullet points. Use *bold* for headings only. "
@@ -258,7 +211,6 @@ logger.info(f"TWILIO_ACCOUNT_SID set: {bool(TWILIO_ACCOUNT_SID)}")
 MAX_DAYS_BACK = 90
 
 # ── Tool definitions ──────────────────────────────────────────────────────────
-# Organised by category so we can send only the tools each user needs.
 
 _MINDBODY_TOOLS = [
     {
@@ -268,7 +220,7 @@ _MINDBODY_TOOLS = [
     },
     {
         "name": "get_daily_briefing",
-        "description": "Full daily briefing: classes, bookings, calendar, inbox",
+        "description": "Daily briefing: today's classes and bookings",
         "input_schema": {"type": "object", "properties": {}, "required": []},
     },
     {
@@ -397,11 +349,6 @@ _MINDBODY_TOOLS = [
         "input_schema": {"type": "object", "properties": {}, "required": []},
     },
     {
-        "name": "get_trello_tasks",
-        "description": "HIIT Challenge Trello cards due today or overdue",
-        "input_schema": {"type": "object", "properties": {}, "required": []},
-    },
-    {
         "name": "run_class_report",
         "description": "New client report on a class: first-timers, intro/trial pricing, new memberships (14d). Can run on a single class or ALL classes for a day.",
         "input_schema": {
@@ -429,242 +376,8 @@ _MINDBODY_TOOLS = [
     },
 ]
 
-_CALENDAR_TOOLS = [
-    {
-        "name": "get_calendar_events",
-        "description": "Get Google Calendar events for today or a date range",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "days_forward": {"type": "integer", "description": "Days forward (default 0, max 7)", "default": 0},
-                "days_back": {"type": "integer", "description": "Days back (default 0)", "default": 0},
-            },
-            "required": [],
-        },
-    },
-    {
-        "name": "create_calendar_event",
-        "description": "Create a new Google Calendar event",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "summary": {"type": "string", "description": "Event title"},
-                "start_date": {"type": "string", "description": "YYYY-MM-DD"},
-                "start_time": {"type": "string", "description": "HH:MM 24hr start"},
-                "end_time": {"type": "string", "description": "HH:MM 24hr end"},
-                "description": {"type": "string", "description": "Optional description"},
-                "location": {"type": "string", "description": "Optional location"},
-            },
-            "required": ["summary", "start_date", "start_time", "end_time"],
-        },
-    },
-]
-
-_OUTLOOK_TOOLS = [
-    {
-        "name": "read_inbox",
-        "description": "Read recent Outlook emails",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "count": {"type": "integer", "description": "Emails to fetch (default 10, max 50)", "default": 10},
-                "search": {"type": "string", "description": "Optional search query"},
-            },
-            "required": [],
-        },
-    },
-    {
-        "name": "draft_email",
-        "description": "Create an Outlook draft email (saved, not sent)",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "to": {"type": "string", "description": "Recipient(s), comma-separated"},
-                "subject": {"type": "string", "description": "Subject line"},
-                "body": {"type": "string", "description": "Email body"},
-                "cc": {"type": "string", "description": "CC address(es), comma-separated"},
-            },
-            "required": ["to", "subject", "body"],
-        },
-    },
-]
-
-_GMAIL_TOOLS = [
-    {
-        "name": "read_gmail",
-        "description": "Read recent Gmail emails",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "count": {"type": "integer", "description": "Emails to fetch (default 10)", "default": 10},
-                "query": {"type": "string", "description": "Optional search query"},
-            },
-            "required": [],
-        },
-    },
-    {
-        "name": "read_gmail_drafts",
-        "description": "Read Gmail drafts",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "count": {"type": "integer", "description": "Drafts to fetch (default 10)", "default": 10},
-            },
-            "required": [],
-        },
-    },
-]
-
-# Users who have Gmail access — only they get Gmail tools
-_GMAIL_USERS = set(USER_GMAIL.values())
-
-
-_TRELLO_WRITE_TOOLS = [
-    {
-        "name": "add_trello_card",
-        "description": (
-            "Add a new card to the user's Trello board. Defaults to the user's To Do list "
-            "unless list_name is specified. Use this when the user says 'add a task', "
-            "'add to my to do list', 'create a card', etc."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "title": {"type": "string", "description": "Card title"},
-                "due_date": {"type": "string", "description": "YYYY-MM-DD, optional"},
-                "description": {"type": "string", "description": "Free text, optional"},
-                "labels": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Label names, optional. Created on the board if missing.",
-                },
-                "list_name": {
-                    "type": "string",
-                    "description": "Override list name. Defaults to the user's todo_list.",
-                },
-            },
-            "required": ["title"],
-        },
-    },
-    {
-        "name": "edit_trello_card",
-        "description": (
-            "Edit an existing Trello card by fuzzy title match on the user's board. "
-            "Provide the current title (or a distinctive fragment) plus any fields to change. "
-            "If multiple cards match, the tool returns the matches and asks the user to be more specific."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "title": {"type": "string", "description": "Current card title (fuzzy match)"},
-                "new_title": {"type": "string", "description": "Rename the card"},
-                "due_date": {"type": "string", "description": "YYYY-MM-DD"},
-                "description": {"type": "string"},
-                "labels": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Replaces the card's labels with this list.",
-                },
-            },
-            "required": ["title"],
-        },
-    },
-    {
-        "name": "move_trello_card",
-        "description": (
-            "Move a card to another list. Defaults to the user's Done list — use this "
-            "when the user says 'I've completed X', 'I've done X', 'tick off X', or 'mark X done'. "
-            "Do NOT use remove_trello_card for completion — use this."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "title": {"type": "string", "description": "Card title to find (fuzzy)"},
-                "list_name": {
-                    "type": "string",
-                    "description": "Override destination list. Defaults to the user's done_list.",
-                },
-            },
-            "required": ["title"],
-        },
-    },
-    {
-        "name": "remove_trello_card",
-        "description": (
-            "Archive (delete) a Trello card. Two-step flow: call first WITHOUT confirmed=true to "
-            "preview the card; then only call again with confirmed=true after the user has replied "
-            "'yes' (or similar) to the preview. NEVER call with confirmed=true on the first attempt. "
-            "Use only when the user explicitly says delete/archive/remove — NOT for 'completed' or 'done'."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "title": {"type": "string", "description": "Card title to find (fuzzy)"},
-                "confirmed": {"type": "boolean", "description": "Must be true on the second call after user confirms"},
-            },
-            "required": ["title"],
-        },
-    },
-]
-
-
-_JOTFORM_TOOLS = [
-    {
-        "name": "get_jotform_submissions",
-        "description": (
-            "Get the total submission count for a JotForm form, looked up by form name. "
-            "Use this when the user asks 'how many submissions for X', 'submission count', "
-            "or similar. Matches form name case-insensitively. If multiple forms match, "
-            "the bot will list them so the user can pick."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "form_name": {
-                    "type": "string",
-                    "description": "Name (or partial name) of the JotForm form.",
-                },
-            },
-            "required": ["form_name"],
-        },
-    },
-]
-
-
-def _get_tools_for_user(user_email, raw_number=None):
-    """Return only the tools relevant to this user — saves ~500 input tokens for non-Gmail users."""
-    tools = _MINDBODY_TOOLS + _CALENDAR_TOOLS + _OUTLOOK_TOOLS + _JOTFORM_TOOLS
-    # Only include Gmail tools for users who actually have a Gmail account
-    if user_email and any(user_email == USER_EMAILS.get(phone) for phone in USER_GMAIL):
-        tools = tools + _GMAIL_TOOLS
-    if raw_number in USER_TRELLO:
-        tools = tools + _TRELLO_WRITE_TOOLS
-    return tools
-
-
-# Keep ALL_TOOLS for handle_tool_call routing (it handles all tools regardless)
-ALL_TOOLS = _MINDBODY_TOOLS + _CALENDAR_TOOLS + _OUTLOOK_TOOLS + _GMAIL_TOOLS + _TRELLO_WRITE_TOOLS + _JOTFORM_TOOLS
-
-
-def _get_user_calendar_ids(user_email):
-    """Look up per-user calendar IDs from the phone→email→calendar mapping."""
-    for phone, cals in USER_CALENDAR.items():
-        if user_email and user_email == USER_EMAILS.get(phone):
-            return cals
-    return ["primary"]
-
-
-def _get_user_gmail(user_email):
-    """Look up the Gmail address for a user from the phone→email→Gmail mapping."""
-    for phone, gmail in USER_GMAIL.items():
-        if user_email and user_email == USER_EMAILS.get(phone):
-            return gmail
-    return user_email
-
-
-def handle_tool_call(tool_name, tool_input, user_email=None, raw_number=None):
+def handle_tool_call(tool_name, tool_input):
     """Execute a tool call and return the result."""
-    # ── MindBody tools ────────────────────────────────────────────────────────
     if tool_name == "get_todays_classes":
         from mindbody_helper import get_todays_schedule, format_schedule
         classes = get_todays_schedule()
@@ -672,36 +385,7 @@ def handle_tool_call(tool_name, tool_input, user_email=None, raw_number=None):
 
     elif tool_name == "get_daily_briefing":
         from mindbody_helper import get_daily_briefing, format_briefing
-        from gcal_helper import get_events, format_events
-        from outlook_helper import read_inbox, format_inbox_summary
-
-        parts = []
-
-        # Classes
-        briefing = get_daily_briefing()
-        parts.append(format_briefing(briefing))
-
-        # Calendar — use per-user calendar IDs (may be multiple)
-        try:
-            all_events = []
-            for cid in _get_user_calendar_ids(user_email):
-                try:
-                    all_events.extend(get_events(days_forward=0, days_back=0, calendar_id=cid))
-                except Exception:
-                    pass
-            all_events.sort(key=lambda e: e.get("start", ""))
-            parts.append(format_events(all_events, title="TODAY'S CALENDAR"))
-        except Exception:
-            parts.append("*TODAY'S CALENDAR*\nUnable to fetch calendar.")
-
-        # Emails
-        try:
-            emails = read_inbox(count=5, outlook_user=user_email)
-            parts.append(format_inbox_summary(emails))
-        except Exception:
-            parts.append("*INBOX*\nUnable to fetch emails.")
-
-        return "\n\n".join(parts)
+        return format_briefing(get_daily_briefing())
 
     elif tool_name == "search_clients":
         from mindbody_helper import search_clients, format_clients
@@ -796,209 +480,6 @@ def handle_tool_call(tool_name, tool_input, user_email=None, raw_number=None):
             reports = get_multi_noshow_report(class_date=class_date, class_time=class_time)
             return format_multi_noshow_report(reports)
 
-    elif tool_name == "get_trello_tasks":
-        from trello_helper import get_trello_tasks, format_trello_tasks
-        tasks = get_trello_tasks()
-        return format_trello_tasks(tasks)
-
-    elif tool_name == "add_trello_card":
-        from trello_helper import _find_board_id, _find_list, _resolve_labels, create_card
-        cfg = USER_TRELLO.get(raw_number)
-        if not cfg:
-            return "Trello write access is not configured for you."
-        board_id = _find_board_id(cfg["board"])
-        if not board_id:
-            return f"Could not find Trello board '{cfg['board']}'."
-        list_name = tool_input.get("list_name") or cfg["todo_list"]
-        list_result = _find_list(board_id, list_name)
-        if not list_result:
-            return f"No list matching '{list_name}' on {cfg['board']}."
-        list_id, canonical_list_name = list_result
-        label_ids = _resolve_labels(board_id, tool_input.get("labels") or [])
-        card = create_card(
-            board_id=board_id,
-            list_id=list_id,
-            title=tool_input["title"],
-            due_date=tool_input.get("due_date"),
-            description=tool_input.get("description"),
-            label_ids=label_ids,
-        )
-        url = card.get("shortUrl", "")
-        msg = f"Added '{tool_input['title']}' to {canonical_list_name} on {cfg['board']}."
-        if url:
-            msg += f"\n{url}"
-        return msg
-
-    elif tool_name == "move_trello_card":
-        from trello_helper import _find_board_id, _find_list, _find_cards, move_card
-        cfg = USER_TRELLO.get(raw_number)
-        if not cfg:
-            return "Trello write access is not configured for you."
-        board_id = _find_board_id(cfg["board"])
-        if not board_id:
-            return f"Could not find Trello board '{cfg['board']}'."
-        dest_list_name = tool_input.get("list_name") or cfg["done_list"]
-        dest = _find_list(board_id, dest_list_name)
-        if not dest:
-            return f"No list matching '{dest_list_name}' on {cfg['board']}."
-        dest_id, dest_canonical = dest
-        matches = _find_cards(board_id, tool_input.get("title", ""))
-        if not matches:
-            return f"No card matching '{tool_input.get('title')}' on {cfg['board']}."
-        if len(matches) > 1:
-            top = matches[:5]
-            lines = ["Multiple matches — please be more specific:"]
-            for m in top:
-                lines.append(f"  - {m['name']} ({m['list_name']})")
-            return "\n".join(lines)
-        m = matches[0]
-        move_card(m["id"], dest_id)
-        return f"Moved '{m['name']}' from {m['list_name']} to {dest_canonical}."
-
-    elif tool_name == "edit_trello_card":
-        from trello_helper import _find_board_id, _find_cards, _resolve_labels, update_card
-        cfg = USER_TRELLO.get(raw_number)
-        if not cfg:
-            return "Trello write access is not configured for you."
-        board_id = _find_board_id(cfg["board"])
-        if not board_id:
-            return f"Could not find Trello board '{cfg['board']}'."
-        matches = _find_cards(board_id, tool_input.get("title", ""))
-        if not matches:
-            return f"No card matching '{tool_input.get('title')}' on {cfg['board']}."
-        if len(matches) > 1:
-            top = matches[:5]
-            lines = ["Multiple matches — please be more specific:"]
-            for m in top:
-                lines.append(f"  - {m['name']} ({m['list_name']})")
-            return "\n".join(lines)
-        m = matches[0]
-
-        label_names = tool_input.get("labels")
-        label_ids = None
-        if label_names is not None:
-            label_ids = _resolve_labels(board_id, label_names)
-
-        update_card(
-            m["id"],
-            name=tool_input.get("new_title"),
-            due_date=tool_input.get("due_date"),
-            description=tool_input.get("description"),
-            label_ids=label_ids,
-        )
-        return f"Updated '{m['name']}'."
-
-    elif tool_name == "remove_trello_card":
-        from trello_helper import _find_board_id, _find_cards, archive_card
-        cfg = USER_TRELLO.get(raw_number)
-        if not cfg:
-            return "Trello write access is not configured for you."
-        board_id = _find_board_id(cfg["board"])
-        if not board_id:
-            return f"Could not find Trello board '{cfg['board']}'."
-        matches = _find_cards(board_id, tool_input.get("title", ""))
-        if not matches:
-            return f"No card matching '{tool_input.get('title')}' on {cfg['board']}."
-        if len(matches) > 1:
-            top = matches[:5]
-            lines = ["Multiple matches — please be more specific:"]
-            for m in top:
-                lines.append(f"  - {m['name']} ({m['list_name']})")
-            return "\n".join(lines)
-        m = matches[0]
-        if not tool_input.get("confirmed"):
-            return (
-                f"Found '{m['name']}' in {m['list_name']}. "
-                f"Reply 'yes' to archive."
-            )
-        archive_card(m["id"])
-        return f"Archived '{m['name']}'."
-
-    elif tool_name == "get_jotform_submissions":
-        from jotform_helper import get_submission_count
-        result = get_submission_count(tool_input["form_name"])
-        if result["status"] == "ok":
-            return f"*{result['title']}*: {result['count']} submissions"
-        elif result["status"] == "none":
-            return f"No JotForm form found matching '{result['name']}'."
-        elif result["status"] == "suggest":
-            s = result["suggestion"]
-            return (
-                f"No exact match for '{result['name']}'. "
-                f"Did you mean *{s['title']}*? ({s['count']} submissions)"
-            )
-        elif result["status"] == "multiple":
-            lines = ["Multiple forms match — which one?"]
-            for m in result["matches"]:
-                lines.append(f"• {m['title']} ({m['count']} submissions)")
-            return "\n".join(lines)
-        else:  # error
-            return result["message"]
-
-    # ── Google Calendar tools ─────────────────────────────────────────────────
-    elif tool_name == "get_calendar_events":
-        from gcal_helper import get_events, format_events
-        days_fwd = min(tool_input.get("days_forward", 0), 7)
-        days_back = min(tool_input.get("days_back", 0), 7)
-        all_events = []
-        for cid in _get_user_calendar_ids(user_email):
-            try:
-                all_events.extend(get_events(days_forward=days_fwd, days_back=days_back, calendar_id=cid))
-            except Exception:
-                pass
-        # Sort by start time
-        all_events.sort(key=lambda e: e.get("start", ""))
-        return format_events(all_events, title="Calendar")
-
-    elif tool_name == "create_calendar_event":
-        from gcal_helper import create_event
-        cal_ids = _get_user_calendar_ids(user_email)
-        cal_id = cal_ids[0] if cal_ids != ["primary"] else None
-        result = create_event(
-            summary=tool_input["summary"],
-            start_date=tool_input["start_date"],
-            start_time=tool_input["start_time"],
-            end_time=tool_input["end_time"],
-            description=tool_input.get("description"),
-            location=tool_input.get("location"),
-            calendar_id=cal_id,
-        )
-        return f"Event created: {result['summary']}"
-
-    # ── Outlook tools ─────────────────────────────────────────────────────────
-    elif tool_name == "read_inbox":
-        from outlook_helper import read_inbox, format_inbox_summary
-        emails = read_inbox(
-            count=min(tool_input.get("count", 10), 50),
-            search=tool_input.get("search"),
-            outlook_user=user_email,
-        )
-        return format_inbox_summary(emails)
-
-    elif tool_name == "draft_email":
-        from outlook_helper import create_draft
-        result = create_draft(
-            to=tool_input["to"],
-            subject=tool_input["subject"],
-            body=tool_input["body"],
-            cc=tool_input.get("cc"),
-            outlook_user=user_email,
-        )
-        return f"Draft created: {result['subject']}"
-
-    # ── Gmail tools ─────────────────────────────────────────────────────────
-    elif tool_name == "read_gmail":
-        from gmail_helper import read_gmail_inbox, format_gmail_inbox
-        gmail_addr = _get_user_gmail(user_email)
-        emails = read_gmail_inbox(gmail_addr, count=tool_input.get("count", 10), query=tool_input.get("query"))
-        return format_gmail_inbox(emails)
-
-    elif tool_name == "read_gmail_drafts":
-        from gmail_helper import read_gmail_drafts as fetch_drafts, format_gmail_drafts
-        gmail_addr = _get_user_gmail(user_email)
-        drafts = fetch_drafts(gmail_addr, count=tool_input.get("count", 10))
-        return format_gmail_drafts(drafts)
-
     return f"Unknown tool: {tool_name}"
 
 
@@ -1023,27 +504,11 @@ def _build_system_prompt(user_name, raw_number):
             "Only call get_revenue if they give the exact password."
         )
 
-    # Chonnie has both Outlook and Gmail
-    if raw_number == "+61481123186":
-        parts.append(
-            "This user has two email accounts: "
-            "Outlook (chontel@hiitaustralia.com.au, use read_inbox) and "
-            "Gmail (chontelhiit@gmail.com, use read_gmail). "
-            "When they ask to check emails or drafts, ask which account."
-        )
-
     parts.append(f"Today is {today_str}.")
     parts.append(
         "When user says 'next week' they mean the upcoming Mon-Sun. "
         "Calculate correct dates from today."
     )
-    if user_name:
-        parts.append(
-            "When creating calendar events: create immediately, don't ask follow-ups unless "
-            "date/time is genuinely unclear. Default end = 1hr after start. "
-            "Ask about description notes AFTER creating. "
-            f"Prefix event name with '{user_name} - '."
-        )
 
     return "\n\n".join(parts)
 
@@ -1063,9 +528,8 @@ def get_claude_response(user_message, sender=None):
     logger.info(f"History: loaded {len(history)} prior messages for {mask_number(raw_number)}")
 
     user_name = USER_NAMES.get(raw_number)
-    user_email = USER_EMAILS.get(raw_number, "sam@hiitaustralia.com.au")
     system = _build_system_prompt(user_name, raw_number)
-    tools = _get_tools_for_user(user_email, raw_number=raw_number)
+    tools = _MINDBODY_TOOLS
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
@@ -1093,7 +557,7 @@ def get_claude_response(user_message, sender=None):
             if block.type == "tool_use":
                 logger.info(f"Tool call: {block.name}")
                 try:
-                    result = handle_tool_call(block.name, block.input, user_email=user_email, raw_number=raw_number)
+                    result = handle_tool_call(block.name, block.input)
                 except Exception as e:
                     logger.error(f"Tool error ({block.name}): {e}")
                     result = "Sorry, that data is temporarily unavailable."
@@ -1213,10 +677,8 @@ SLOW_KEYWORDS = [
     "new members", "new signups", "sign-ups", "sign ups",
     "arrears", "failed payments", "owed",
     "weekly summary", "weekly wrap", "wrap-up", "wrap up",
-    "trello", "hiit challenge", "tasks",
     "class report", "run a report", "check the class", "tonight's class",
     "no show", "no-show", "didn't show", "didn't sign in", "not signed in",
-    "submission", "submissions", "jotform", "form submissions",
 ]
 
 QUICK_REPLIES = [
@@ -1235,13 +697,6 @@ def _is_slow_request(msg):
 def process_message_async(sender, incoming_msg):
     """Process the message in a background thread and send reply via Twilio API."""
     import random
-
-    # Handle Gmail connect command
-    if incoming_msg.lower().strip() in ("connect gmail", "setup gmail", "link gmail"):
-        from gmail_helper import get_auth_url
-        auth_url = get_auth_url()
-        send_whatsapp_reply(sender, f"Click this link to connect your Gmail:\n\n{auth_url}")
-        return
 
     # Handle cache refresh command
     if incoming_msg.lower().strip() in ("refresh", "refresh data", "clear cache"):
@@ -1305,244 +760,6 @@ def webhook():
     return "", 200
 
 
-@app.route("/oauth/callback", methods=["GET"])
-def oauth_callback():
-    """Handle Google OAuth2 callback for Gmail access."""
-    from gmail_helper import exchange_code, store_tokens
-    import json as json_mod
-
-    code = request.args.get("code")
-    if not code:
-        return "Missing authorization code", 400
-
-    try:
-        tokens = exchange_code(code)
-        # Get the user's email from the access token
-        resp = requests.get(
-            "https://www.googleapis.com/oauth2/v2/userinfo",
-            headers={"Authorization": f"Bearer {tokens['access_token']}"},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        email = resp.json().get("email", "unknown")
-
-        store_tokens(email, tokens)
-        logger.info(f"Gmail OAuth completed for {email}")
-
-        # Also store in env for persistence across restarts
-        stored = os.environ.get("GMAIL_TOKENS", "{}")
-        try:
-            all_tokens = json_mod.loads(stored)
-        except json_mod.JSONDecodeError:
-            all_tokens = {}
-        all_tokens[email] = tokens
-        os.environ["GMAIL_TOKENS"] = json_mod.dumps(all_tokens)
-
-        return f"Gmail connected for {email}! You can close this page and go back to WhatsApp.", 200
-    except Exception as e:
-        logger.error(f"OAuth callback error: {e}")
-        return f"Error connecting Gmail: {str(e)}", 500
-
-
-CRON_SECRET = os.environ.get("CRON_SECRET", "")
-
-
-@app.route("/cron/leads", methods=["POST", "GET"])
-def cron_leads():
-    """5am daily automation: process MindBody lead emails and create draft replies.
-
-    Secured with a secret token to prevent unauthorized access.
-    Called by Railway cron job or external scheduler.
-    """
-    # Verify secret (skip if not configured — allows easy testing)
-    token = request.args.get("token") or request.headers.get("X-Cron-Secret")
-    if CRON_SECRET and token != CRON_SECRET:
-        abort(403)
-
-    try:
-        from lead_automation import process_new_leads, format_lead_summary
-        test_mode = request.args.get("test") == "1"
-        drafts = process_new_leads(include_read=test_mode)
-        summary = format_lead_summary(drafts)
-
-        # Notify Erin on WhatsApp with the results
-        if drafts:
-            try:
-                erin_whatsapp = "whatsapp:+61421188443"
-                send_whatsapp_reply(erin_whatsapp, summary)
-            except Exception as e:
-                logger.error(f"Failed to send lead notification to Erin: {e}")
-
-        logger.info(f"Lead automation complete: {len(drafts)} drafts created")
-        return summary, 200
-
-    except Exception as e:
-        logger.error(f"Lead automation failed: {e}")
-        return f"Error: {str(e)}", 500
-
-
-@app.route("/cron/leads/debug", methods=["GET"])
-def cron_leads_debug():
-    """Debug endpoint: show what MindBody emails are in Erin's inbox."""
-    token = request.args.get("token") or request.headers.get("X-Cron-Secret")
-    if CRON_SECRET and token != CRON_SECRET:
-        abort(403)
-
-    from outlook_helper import read_inbox, read_email
-    inbox = request.args.get("inbox", "admin@hiitaustralia.com.au")
-    emails = read_inbox(count=20, search="mindbody", outlook_user=inbox)
-
-    lines = [f"Inbox: {inbox}", f"Found: {len(emails)} emails matching 'mindbody'\n"]
-    for e in emails:
-        lines.append(f"From: {e['from_email']}")
-        lines.append(f"Subject: {e['subject']}")
-        lines.append(f"Read: {e['is_read']}")
-        lines.append(f"Date: {e['date']}")
-        lines.append(f"Preview: {e['preview'][:100]}")
-
-        # Show full body for MindBody lead emails
-        if "mindbodyemail" in e.get("from_email", "").lower() and "lead" in e.get("subject", "").lower():
-            try:
-                full = read_email(e["id"], outlook_user=inbox)
-                lines.append(f"FULL BODY:\n{full['body'][:2000]}")
-            except Exception as ex:
-                lines.append(f"Error reading body: {ex}")
-        lines.append("")
-
-    return "\n".join(lines), 200
-
-
-# ── Neuform Content Upload API ────────────────────────────────────────────────
-
-@app.route("/api/drive/upload", methods=["POST", "OPTIONS"])
-def drive_upload():
-    """Upload a file to a specific Google Drive folder for the content calendar."""
-    # CORS
-    if request.method == "OPTIONS":
-        resp = app.make_default_options_response()
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Upload-Key"
-        resp.headers["Access-Control-Max-Age"] = "86400"
-        return resp
-
-    from flask import jsonify
-
-    # Simple API key check
-    upload_key = os.environ.get("NEUFORM_UPLOAD_KEY", "")
-    provided_key = request.headers.get("X-Upload-Key", "") or request.form.get("key", "")
-    if upload_key and provided_key != upload_key:
-        return jsonify({"error": "Unauthorized"}), 401
-
-    folder_id = request.form.get("folder_id")
-    if not folder_id:
-        return jsonify({"error": "Missing folder_id"}), 400
-
-    if "file" not in request.files:
-        return jsonify({"error": "No file provided"}), 400
-
-    file = request.files["file"]
-    if not file.filename:
-        return jsonify({"error": "Empty filename"}), 400
-
-    try:
-        import json as _json
-        from google.oauth2 import service_account as _sa
-        from googleapiclient.discovery import build as _build
-        from googleapiclient.http import MediaIoBaseUpload
-
-        sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
-        if sa_json:
-            sa_info = _json.loads(sa_json)
-            creds = _sa.Credentials.from_service_account_info(
-                sa_info, scopes=["https://www.googleapis.com/auth/drive"]
-            )
-        else:
-            return jsonify({"error": "No service account configured"}), 500
-
-        drive = _build("drive", "v3", credentials=creds)
-
-        media = MediaIoBaseUpload(file.stream, mimetype=file.content_type or "video/mp4", resumable=True)
-        file_metadata = {"name": file.filename, "parents": [folder_id]}
-        created = drive.files().create(body=file_metadata, media_body=media, fields="id,name,size").execute()
-
-        resp = jsonify({"success": True, "fileId": created["id"], "name": created["name"]})
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        return resp
-
-    except Exception as e:
-        logger.error(f"Drive upload error: {e}")
-        resp = jsonify({"error": str(e)})
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        return resp, 500
-
-
-@app.route("/api/drive/folders", methods=["GET", "OPTIONS"])
-def drive_folders():
-    """Return the folder map for the content calendar."""
-    if request.method == "OPTIONS":
-        resp = app.make_default_options_response()
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
-        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
-        return resp
-
-    from flask import jsonify
-    import json as _json
-    from google.oauth2 import service_account as _sa
-    from googleapiclient.discovery import build as _build
-
-    try:
-        sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
-        if not sa_json:
-            return jsonify({"error": "No service account"}), 500
-
-        sa_info = _json.loads(sa_json)
-        creds = _sa.Credentials.from_service_account_info(
-            sa_info, scopes=["https://www.googleapis.com/auth/drive.readonly"]
-        )
-        drive = _build("drive", "v3", credentials=creds)
-
-        parent_id = "1m99uefGSWlDzT4XZvUk9zlLbb97fsK6T"
-        folder_map = {}
-
-        # Get day folders
-        q = f"'{parent_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
-        day_folders = drive.files().list(q=q, fields="files(id,name)", pageSize=100).execute().get("files", [])
-
-        for day in sorted(day_folders, key=lambda x: x["name"]):
-            day_data = {"id": day["id"], "posts": {}}
-
-            # Get post folders
-            q2 = f"'{day['id']}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
-            post_folders = drive.files().list(q=q2, fields="files(id,name)", pageSize=20).execute().get("files", [])
-
-            for pf in sorted(post_folders, key=lambda x: x["name"]):
-                post_num = pf["name"][:2]
-                post_data = {"id": pf["id"], "name": pf["name"]}
-
-                # Get subfolders (Raw/Edited/Approved)
-                q3 = f"'{pf['id']}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
-                subs = drive.files().list(q=q3, fields="files(id,name)", pageSize=5).execute().get("files", [])
-                for s in subs:
-                    post_data[s["name"]] = s["id"]
-
-                day_data["posts"][post_num] = post_data
-
-            folder_map[day["name"]] = day_data
-
-        resp = jsonify(folder_map)
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Cache-Control"] = "public, max-age=3600"
-        return resp
-
-    except Exception as e:
-        logger.error(f"Drive folders error: {e}")
-        resp = jsonify({"error": str(e)})
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        return resp, 500
-
-
 @app.route("/health", methods=["GET"])
 def health():
     """Health check endpoint."""
@@ -1554,75 +771,8 @@ def index():
     return "", 200
 
 
-# ── Background scheduler: daily lead automation at 5am AEST ──────────────────
-
-_scheduler_started = False
-
-
-def _run_daily_leads():
-    """Background thread that runs lead automation at 5am AEST every day."""
-    from datetime import datetime, timezone, timedelta
-    aest = timezone(timedelta(hours=10))
-
-    logger.info("Lead automation scheduler started — will run daily at 5:00am AEST")
-
-    while True:
-        try:
-            now = datetime.now(aest)
-            # Calculate seconds until next 5:00am AEST
-            target = now.replace(hour=5, minute=0, second=0, microsecond=0)
-            if now >= target:
-                # Already past 5am today — schedule for tomorrow
-                target += timedelta(days=1)
-
-            wait_seconds = (target - now).total_seconds()
-            logger.info(
-                f"Lead scheduler: next run at {target.strftime('%Y-%m-%d %H:%M AEST')} "
-                f"({wait_seconds/3600:.1f} hours from now)"
-            )
-            time.sleep(wait_seconds)
-
-            # Run lead automation
-            logger.info("Lead scheduler: running daily lead automation...")
-            from lead_automation import process_new_leads, format_lead_summary
-            drafts = process_new_leads()
-            summary = format_lead_summary(drafts)
-
-            # Notify Erin on WhatsApp
-            try:
-                erin_whatsapp = "whatsapp:+61421188443"
-                send_whatsapp_reply(erin_whatsapp, summary)
-                logger.info(f"Lead scheduler: {len(drafts)} drafts created, Erin notified")
-            except Exception as e:
-                logger.error(f"Lead scheduler: failed to notify Erin: {e}")
-
-        except Exception as e:
-            logger.error(f"Lead scheduler error: {e}")
-            # Sleep 60 seconds before retrying on error
-            time.sleep(60)
-
-
-def start_scheduler():
-    """Start the background lead scheduler (only once, even with multiple gunicorn workers)."""
-    global _scheduler_started
-    if _scheduler_started:
-        return
-    _scheduler_started = True
-
-    t = threading.Thread(target=_run_daily_leads, daemon=True)
-    t.start()
-    logger.info("Background lead scheduler thread launched")
-
-
-# Start scheduler when the app loads (gunicorn preload)
-# Only start if we're actually running the server (not importing for tests)
-if os.environ.get("PORT"):
-    start_scheduler()
-
-
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    start_scheduler()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

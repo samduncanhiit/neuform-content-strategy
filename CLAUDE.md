@@ -12,6 +12,7 @@ mindbody_helper.py    — MindBody API v6 integration and WhatsApp formatters
 tests/                — unittest suites (run with `python3 -m pytest -q`)
 docs/list_contracts.py — one-off: list every contract product (`railway run python docs/list_contracts.py`)
 docs/superpowers/     — design specs and implementation plans
+docs/SESSION-LOG.md   — dated log of each work session (newest first), updated by /endsession
 ```
 
 Code removed in the MindBody-only cleanup (Outlook, Gmail, Google Calendar, Trello, JotForm, lead automation, Neuform content calendar) is recoverable from git tag `pre-mindbody-only`.
